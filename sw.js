@@ -1,4 +1,4 @@
-const CACHE_NAME = "lil-g-app-v3";
+const CACHE_NAME = "lil-g-app-v4";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -8,6 +8,7 @@ const APP_SHELL = [
   "./src/chatEngine.js",
   "./src/memory.js",
   "./src/speech.js",
+  "./src/voiceSettings.js",
   "./src/webSearch.js",
   "./src/wakeWord.js",
   "./assets/icons/icon-192.png",

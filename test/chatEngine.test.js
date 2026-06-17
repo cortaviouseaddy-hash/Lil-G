@@ -4,16 +4,25 @@ import { describe, it } from "node:test";
 import { createAssistantMessage, createUserMessage, getLilGResponse } from "../src/chatEngine.js";
 import {
   extractMemoryFact,
+  extractAutomaticMemoryFacts,
   formatMemoryList,
   getRelevantMemoryText,
   isClearMemoryRequest,
   isMemoryRecallRequest,
   loadMemories,
   MEMORY_STORAGE_KEY,
+  rememberAutomaticFacts,
   rememberFact,
   saveMemories
 } from "../src/memory.js";
 import { speakText, stopSpeaking } from "../src/speech.js";
+import {
+  createPresetSettings,
+  createVoiceOptions,
+  loadVoiceSettings,
+  VOICE_SETTINGS_STORAGE_KEY,
+  voicePresets
+} from "../src/voiceSettings.js";
 import { detectWakePhrase, isWakePhrase } from "../src/wakeWord.js";
 import { createWebSearchUrl, detectSearchIntent, formatSearchReply, searchInternet } from "../src/webSearch.js";
 
@@ -113,6 +122,44 @@ describe("speech helpers", () => {
   });
 });
 
+describe("voice settings helpers", () => {
+  it("defines six voice presets including a robotic option", () => {
+    assert.equal(voicePresets.length, 6);
+    assert.equal(voicePresets.some((preset) => preset.id === "robotic"), true);
+  });
+
+  it("loads saved voice settings and builds speech options", () => {
+    const storage = createMemoryStorage();
+    storage.setItem(
+      VOICE_SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        presetId: "robotic",
+        pitch: 0.7,
+        rate: 0.8
+      })
+    );
+
+    const settings = loadVoiceSettings(storage);
+    const options = createVoiceOptions(settings, [
+      { name: "Zarvox", lang: "en-US" },
+      { name: "Sample German", lang: "de-DE" }
+    ]);
+
+    assert.equal(settings.presetId, "robotic");
+    assert.equal(options.pitch, 0.7);
+    assert.equal(options.rate, 0.8);
+    assert.equal(options.voice.name, "Zarvox");
+  });
+
+  it("creates preset defaults for the selected style", () => {
+    const settings = createPresetSettings("deep");
+
+    assert.equal(settings.presetId, "deep");
+    assert.equal(settings.pitch < 1, true);
+    assert.equal(settings.rate < 1, true);
+  });
+});
+
 describe("wake word helpers", () => {
   it("detects Lil-G wake phrases", () => {
     assert.equal(isWakePhrase("hey Lil G"), true);
@@ -159,6 +206,21 @@ describe("memory helpers", () => {
   it("detects recall and clear requests", () => {
     assert.equal(isMemoryRecallRequest("what do you remember about me?"), true);
     assert.equal(isClearMemoryRequest("clear memory"), true);
+  });
+
+  it("extracts and saves automatic profile memories", () => {
+    assert.deepEqual(extractAutomaticMemoryFacts("my favorite music is jazz"), ["your favorite music is jazz"]);
+    assert.deepEqual(extractAutomaticMemoryFacts("I talk about basketball a lot"), [
+      "your speech pattern includes basketball"
+    ]);
+
+    const result = rememberAutomaticFacts("I love Memphis rap.", [], {
+      id: "memory-automatic",
+      createdAt: "2026-06-17T00:00:00.000Z"
+    });
+
+    assert.equal(result.added.length, 1);
+    assert.equal(result.memories[0].text, "you love Memphis rap");
   });
 
   it("finds relevant memory text", () => {

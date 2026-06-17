@@ -7,10 +7,19 @@ import {
   isClearMemoryRequest,
   isMemoryRecallRequest,
   loadMemories,
+  rememberAutomaticFacts,
   rememberFact,
   saveMemories
 } from "./memory.js";
 import { canSpeak, speakText, stopSpeaking } from "./speech.js";
+import {
+  createPresetSettings,
+  createVoiceOptions,
+  getVoicePreset,
+  loadVoiceSettings,
+  saveVoiceSettings,
+  voicePresets
+} from "./voiceSettings.js";
 import { detectWakePhrase } from "./wakeWord.js";
 import { createWebSearchUrl, detectSearchIntent, formatSearchReply, searchInternet } from "./webSearch.js";
 
@@ -31,7 +40,12 @@ const elements = {
   talkBack: document.querySelector("[data-talk-back]"),
   stopSpeech: document.querySelector("[data-stop-speech]"),
   mic: document.querySelector("[data-mic]"),
-  wake: document.querySelector("[data-wake]")
+  wake: document.querySelector("[data-wake]"),
+  voicePresets: document.querySelector("[data-voice-presets]"),
+  voicePitch: document.querySelector("[data-voice-pitch]"),
+  voicePitchValue: document.querySelector("[data-voice-pitch-value]"),
+  voiceRate: document.querySelector("[data-voice-rate]"),
+  voiceRateValue: document.querySelector("[data-voice-rate-value]")
 };
 
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -41,9 +55,12 @@ let isWakeListening = false;
 let isAwaitingWakeCommand = false;
 let deferredInstallPrompt;
 let memories = loadMemories();
+let voiceSettings = loadVoiceSettings();
+let availableVoices = [];
 
 renderMessages();
 renderMemories();
+setupVoiceSettings();
 updateStatus();
 setupSpeechRecognition();
 setupAppInstall();
@@ -59,6 +76,20 @@ elements.talkBack.addEventListener("change", () => {
   if (!elements.talkBack.checked) {
     stopSpeaking();
   }
+});
+
+elements.voicePitch.addEventListener("input", () => {
+  applyVoiceSettings({
+    ...voiceSettings,
+    pitch: Number(elements.voicePitch.value)
+  });
+});
+
+elements.voiceRate.addEventListener("input", () => {
+  applyVoiceSettings({
+    ...voiceSettings,
+    rate: Number(elements.voiceRate.value)
+  });
 });
 
 elements.stopSpeech.addEventListener("click", () => {
@@ -121,6 +152,14 @@ async function buildAssistantReply(content) {
     );
   }
 
+  const automaticMemoryResult = rememberAutomaticFacts(content, memories);
+
+  if (automaticMemoryResult.added.length) {
+    memories = automaticMemoryResult.memories;
+    saveMemories(memories);
+    renderMemories();
+  }
+
   const searchIntent = detectSearchIntent(content);
 
   if (searchIntent.isSearch) {
@@ -129,7 +168,9 @@ async function buildAssistantReply(content) {
 
   const relevantMemories = getRelevantMemoryText(content, memories);
   const reply = getLilGResponse(content, messages, { relevantMemories });
-  return createAssistantMessage(reply);
+  const savedMemoryText = formatSavedMemoryText(automaticMemoryResult.added);
+
+  return createAssistantMessage(savedMemoryText ? `${reply}\n\n${savedMemoryText}` : reply);
 }
 
 async function searchAndReply(query) {
@@ -158,8 +199,15 @@ async function searchAndReply(query) {
 
 function speakAssistantReply(assistantMessage) {
   if (elements.talkBack.checked) {
-    const didSpeak = speakText(assistantMessage.content);
-    setStatus(didSpeak ? "Lil-G answered and spoke back." : "Lil-G answered. Speech is not available in this browser.");
+    const preset = getVoicePreset(voiceSettings.presetId);
+    const didSpeak = speakText(assistantMessage.content, {
+      voice: createVoiceOptions(voiceSettings, availableVoices)
+    });
+    setStatus(
+      didSpeak
+        ? `Lil-G answered with the ${preset.label} voice.`
+        : "Lil-G answered. Speech is not available in this browser."
+    );
   } else {
     setStatus("Lil-G answered in chat.");
   }
@@ -188,10 +236,21 @@ function acknowledgeWakePhrase() {
   renderMessages();
 
   if (elements.talkBack.checked) {
-    speakText(reply);
+    speakText(reply, {
+      voice: createVoiceOptions(voiceSettings, availableVoices)
+    });
   }
 
   setStatus("Wake phrase heard. Say your message now.");
+}
+
+function formatSavedMemoryText(addedMemories) {
+  if (!addedMemories.length) {
+    return "";
+  }
+
+  const memoryText = addedMemories.map((memory) => memory.text).join("; ");
+  return `I saved that to your local profile memory: ${memoryText}.`;
 }
 
 function renderMessages() {
@@ -327,6 +386,66 @@ function setupSpeechRecognition() {
   });
 }
 
+function setupVoiceSettings() {
+  renderVoicePresetButtons();
+  syncVoiceControls();
+  loadAvailableVoices();
+
+  if (canSpeak() && typeof window.speechSynthesis.addEventListener === "function") {
+    window.speechSynthesis.addEventListener("voiceschanged", loadAvailableVoices);
+  }
+}
+
+function renderVoicePresetButtons() {
+  elements.voicePresets.replaceChildren(
+    ...voicePresets.map((preset) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "secondary-button voice-preset-button";
+      button.dataset.voicePreset = preset.id;
+      button.textContent = preset.label;
+      button.title = preset.description;
+      button.setAttribute("aria-pressed", String(preset.id === voiceSettings.presetId));
+      button.addEventListener("click", () => applyVoiceSettings(createPresetSettings(preset.id)));
+      return button;
+    })
+  );
+}
+
+function syncVoiceControls() {
+  const preset = getVoicePreset(voiceSettings.presetId);
+
+  elements.voicePitch.value = String(voiceSettings.pitch);
+  elements.voiceRate.value = String(voiceSettings.rate);
+  elements.voicePitchValue.textContent = voiceSettings.pitch.toFixed(2);
+  elements.voiceRateValue.textContent = voiceSettings.rate.toFixed(2);
+
+  for (const button of elements.voicePresets.querySelectorAll("[data-voice-preset]")) {
+    const isActive = button.dataset.voicePreset === preset.id;
+    button.classList.toggle("is-selected", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  }
+}
+
+function applyVoiceSettings(nextSettings) {
+  voiceSettings = saveVoiceSettings(nextSettings);
+  syncVoiceControls();
+
+  if (elements.talkBack.checked) {
+    const preset = getVoicePreset(voiceSettings.presetId);
+    setStatus(`Talk-back is on with the ${preset.label} voice.`);
+  }
+}
+
+function loadAvailableVoices() {
+  if (!canSpeak() || typeof window.speechSynthesis.getVoices !== "function") {
+    availableVoices = [];
+    return;
+  }
+
+  availableVoices = window.speechSynthesis.getVoices();
+}
+
 function handleVoiceTranscript(transcript) {
   const wakeResult = detectWakePhrase(transcript);
 
@@ -430,7 +549,8 @@ function updateStatus() {
     return;
   }
 
-  setStatus(elements.talkBack.checked ? "Talk-back is on." : "Talk-back is off.");
+  const preset = getVoicePreset(voiceSettings.presetId);
+  setStatus(elements.talkBack.checked ? `Talk-back is on with the ${preset.label} voice.` : "Talk-back is off.");
 }
 
 function setStatus(message) {

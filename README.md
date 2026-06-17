@@ -7,8 +7,9 @@ Lil-G is a lightweight browser chat assistant that can respond in text and talk 
 - Chat UI for sending messages to Lil-G.
 - Built-in response engine so Lil-G can answer immediately without an API key.
 - Internet search commands for phrases like "search the internet for..." or "look up...".
-- Device-local memory: say "remember that..." and Lil-G can recall it later on the same device.
+- Device-local memory: say "remember that..." or share profile facts like your name, favorite things, interests, or speech style, and Lil-G can recall them later on the same device.
 - Talk-back mode using the browser's `speechSynthesis` text-to-speech API.
+- Voice settings with six talk-back presets, including a robotic style, plus pitch and speed sliders.
 - Optional microphone dictation in browsers that support `SpeechRecognition` or `webkitSpeechRecognition`.
 - Wake listening mode: tap "Start wake listening", then say "Lil G" or "hey Lil G" to get Lil-G's attention.
 - Progressive Web App structure so Lil-G can be installed on a phone home screen after it is hosted.
@@ -40,6 +41,21 @@ The local development server is useful for testing on your computer. Phone insta
 
 Memories are saved in the browser's local storage on the current device. They do not sync across phones or browsers.
 
+Lil-G also saves some profile-style memories automatically when you say things like `my name is Corey`, `my favorite music is jazz`, `I love basketball`, or `I talk about cars a lot`.
+
+## Voice settings
+
+Open **Voice and device settings** in the chat card to choose one of six voice presets:
+
+- Balanced
+- Warm
+- Bright
+- Deep
+- Quick
+- Robotic
+
+The pitch slider controls how high or low the voice sounds. The speed slider controls how quickly Lil-G talks. Browser and operating-system voices vary, so the presets use the best available local voice and then apply pitch and speed settings.
+
 ## Test
 
 ```bash
@@ -53,3 +69,5 @@ Talk-back depends on browser speech support. If speech synthesis is unavailable,
 Wake listening also depends on browser speech recognition and microphone permission. Browsers require a user gesture before listening, so tap "Start wake listening" once before using wake phrases.
 
 Internet search depends on the phone or browser having network access. Lil-G shows sourced summary results when available and includes a broader web-search link as a fallback.
+
+Because this is a browser PWA, it cannot read SMS messages, control other phone apps, show system-level reply pop-ups, or keep the microphone listening after the app/browser is closed. Those capabilities require a native Android or iOS app with the relevant accessibility, notification, microphone, and messaging permissions.

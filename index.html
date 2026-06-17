@@ -53,6 +53,37 @@
           <button class="secondary-button" type="button" data-stop-speech>Stop speaking</button>
         </div>
 
+        <details class="settings-card">
+          <summary>Voice and device settings</summary>
+          <div class="settings-grid">
+            <div class="settings-group">
+              <strong>Voice style</strong>
+              <p>Choose one of six talk-back styles. The exact system voice depends on your browser.</p>
+              <div class="voice-preset-grid" data-voice-presets></div>
+            </div>
+
+            <label class="range-control">
+              <span>Pitch <output data-voice-pitch-value>1.00</output></span>
+              <input data-voice-pitch min="0.4" max="1.8" step="0.01" type="range" value="1" />
+            </label>
+
+            <label class="range-control">
+              <span>Speed <output data-voice-rate-value>1.00</output></span>
+              <input data-voice-rate min="0.65" max="1.45" step="0.01" type="range" value="1" />
+            </label>
+
+            <div class="device-access-note">
+              <strong>Phone controls</strong>
+              <p>
+                Lil-G can listen while this app is open and the browser allows the
+                microphone. Reading texts, controlling other apps, showing system
+                pop-ups, or listening after the app is closed requires a native
+                phone app with operating-system permissions.
+              </p>
+            </div>
+          </div>
+        </details>
+
         <div class="messages" data-chat-messages aria-live="polite"></div>
 
         <form class="composer" data-chat-form>
