@@ -1,9 +1,10 @@
 import { createAssistantMessage, createUserMessage, getLilGResponse } from "./chatEngine.js";
 import { canSpeak, speakText, stopSpeaking } from "./speech.js";
+import { detectWakePhrase } from "./wakeWord.js";
 
 const messages = [
   createAssistantMessage(
-    "What's up? I'm Lil-G. Send me a message and I can respond here. Turn on talk-back if you want me to speak out loud."
+    "What's up? I'm Lil-G. Send me a message, tap the mic, or start wake listening and say \"Hey Lil-G\" to get my attention."
   )
 ];
 
@@ -14,11 +15,15 @@ const elements = {
   status: document.querySelector("[data-status]"),
   talkBack: document.querySelector("[data-talk-back]"),
   stopSpeech: document.querySelector("[data-stop-speech]"),
-  mic: document.querySelector("[data-mic]")
+  mic: document.querySelector("[data-mic]"),
+  wake: document.querySelector("[data-wake]")
 };
 
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognition;
+let isRecognitionActive = false;
+let isWakeListening = false;
+let isAwaitingWakeCommand = false;
 
 renderMessages();
 updateStatus();
@@ -67,6 +72,18 @@ function sendMessage(rawInput) {
   }
 }
 
+function acknowledgeWakePhrase() {
+  const reply = "I'm listening. What do you want to ask me?";
+  messages.push(createAssistantMessage(reply));
+  renderMessages();
+
+  if (elements.talkBack.checked) {
+    speakText(reply);
+  }
+
+  setStatus("Wake phrase heard. Say your message now.");
+}
+
 function renderMessages() {
   elements.messages.replaceChildren(
     ...messages.map((message) => {
@@ -90,7 +107,9 @@ function renderMessages() {
 function setupSpeechRecognition() {
   if (!Recognition) {
     elements.mic.disabled = true;
+    elements.wake.disabled = true;
     elements.mic.textContent = "Mic unavailable";
+    elements.wake.textContent = "Wake unavailable";
     return;
   }
 
@@ -100,27 +119,121 @@ function setupSpeechRecognition() {
   recognition.maxAlternatives = 1;
 
   recognition.addEventListener("start", () => {
+    isRecognitionActive = true;
     elements.mic.classList.add("is-listening");
-    setStatus("Listening...");
+    setStatus(isWakeListening ? 'Wake listening... Say "Hey Lil-G".' : "Listening...");
   });
 
   recognition.addEventListener("end", () => {
+    isRecognitionActive = false;
     elements.mic.classList.remove("is-listening");
+    elements.wake.classList.toggle("is-listening", isWakeListening);
+
+    if (isWakeListening) {
+      window.setTimeout(() => startRecognition({ continuous: true }), 250);
+    }
   });
 
   recognition.addEventListener("result", (event) => {
-    const transcript = event.results[0][0].transcript;
+    const result = event.results[event.resultIndex] ?? event.results[0];
+    const transcript = result[0].transcript;
     elements.input.value = transcript;
-    sendMessage(transcript);
+    handleVoiceTranscript(transcript);
   });
 
-  recognition.addEventListener("error", () => {
-    setStatus("I couldn't hear that clearly. Try typing or tap the mic again.");
+  recognition.addEventListener("error", (event) => {
+    if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+      isWakeListening = false;
+      updateWakeButton();
+      setStatus("Microphone permission is blocked. Allow mic access to use voice wake.");
+      return;
+    }
+
+    setStatus(
+      isWakeListening
+        ? 'Still wake listening... Say "Hey Lil-G" when you want me.'
+        : "I couldn't hear that clearly. Try typing or tap the mic again."
+    );
   });
 
   elements.mic.addEventListener("click", () => {
-    recognition.start();
+    isWakeListening = false;
+    isAwaitingWakeCommand = false;
+    updateWakeButton();
+    startRecognition();
   });
+
+  elements.wake.addEventListener("click", () => {
+    isWakeListening = !isWakeListening;
+    isAwaitingWakeCommand = false;
+    updateWakeButton();
+
+    if (isWakeListening) {
+      startRecognition({ continuous: true });
+      return;
+    }
+
+    recognition.stop();
+    setStatus("Wake listening stopped.");
+  });
+}
+
+function handleVoiceTranscript(transcript) {
+  const wakeResult = detectWakePhrase(transcript);
+
+  if (isWakeListening) {
+    if (wakeResult.isWakePhrase) {
+      if (wakeResult.command) {
+        isAwaitingWakeCommand = false;
+        sendMessage(wakeResult.command);
+        return;
+      }
+
+      isAwaitingWakeCommand = true;
+      acknowledgeWakePhrase();
+      return;
+    }
+
+    if (isAwaitingWakeCommand) {
+      isAwaitingWakeCommand = false;
+      sendMessage(transcript);
+      return;
+    }
+
+    setStatus('Wake listening... Say "Hey Lil-G" to get my attention.');
+    return;
+  }
+
+  if (wakeResult.isWakePhrase) {
+    if (wakeResult.command) {
+      sendMessage(wakeResult.command);
+      return;
+    }
+
+    acknowledgeWakePhrase();
+    return;
+  }
+
+  sendMessage(transcript);
+}
+
+function startRecognition(options = {}) {
+  if (!recognition || isRecognitionActive) {
+    return;
+  }
+
+  recognition.continuous = Boolean(options.continuous);
+
+  try {
+    recognition.start();
+  } catch {
+    setStatus("Voice recognition is already starting. Try again in a moment.");
+  }
+}
+
+function updateWakeButton() {
+  elements.wake.classList.toggle("is-listening", isWakeListening);
+  elements.wake.textContent = isWakeListening ? "Stop wake listening" : "Start wake listening";
 }
 
 function updateStatus() {

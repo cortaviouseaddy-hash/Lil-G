@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import { createAssistantMessage, createUserMessage, getLilGResponse } from "../src/chatEngine.js";
 import { speakText, stopSpeaking } from "../src/speech.js";
+import { detectWakePhrase, isWakePhrase } from "../src/wakeWord.js";
 
 describe("getLilGResponse", () => {
   it("answers greetings with an introduction", () => {
@@ -89,5 +90,27 @@ describe("speech helpers", () => {
 
     assert.equal(result, true);
     assert.equal(cancelled, true);
+  });
+});
+
+describe("wake word helpers", () => {
+  it("detects Lil-G wake phrases", () => {
+    assert.equal(isWakePhrase("hey Lil G"), true);
+    assert.equal(isWakePhrase("Lil-G"), true);
+    assert.equal(isWakePhrase("little gee"), true);
+  });
+
+  it("extracts a spoken command after the wake phrase", () => {
+    const result = detectWakePhrase("hey Lil G tell me a joke");
+
+    assert.equal(result.isWakePhrase, true);
+    assert.equal(result.command, "tell me a joke");
+  });
+
+  it("leaves non-wake transcripts available as normal commands", () => {
+    const result = detectWakePhrase("tell me a joke");
+
+    assert.equal(result.isWakePhrase, false);
+    assert.equal(result.command, "tell me a joke");
   });
 });
