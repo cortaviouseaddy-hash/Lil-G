@@ -14,6 +14,9 @@ describe("PWA install structure", () => {
     assert.equal(manifest.start_url, "./");
     assert.equal(manifest.scope, "./");
     assert.equal(manifest.theme_color, "#10131a");
+    assert.equal(manifest.prefer_related_applications, false);
+    assert.equal(manifest.launch_handler.client_mode, "navigate-existing");
+    assert.equal(manifest.shortcuts.length, 2);
     assert.equal(manifest.icons.length, 2);
     assert.deepEqual(
       manifest.icons.map((icon) => icon.sizes),
@@ -32,10 +35,13 @@ describe("PWA install structure", () => {
   it("caches the app shell in the service worker", async () => {
     const serviceWorker = await readFile(new URL("../sw.js", import.meta.url), "utf8");
 
-    assert.match(serviceWorker, /const CACHE_NAME = "lil-g-app-v3"/);
+    assert.match(serviceWorker, /const CACHE_NAME = "lil-g-app-v5"/);
     assert.match(serviceWorker, /"\.\/index\.html"/);
     assert.match(serviceWorker, /"\.\/manifest\.webmanifest"/);
+    assert.match(serviceWorker, /"\.\/src\/appActions\.js"/);
     assert.match(serviceWorker, /"\.\/src\/memory\.js"/);
+    assert.match(serviceWorker, /"\.\/src\/profileSync\.js"/);
+    assert.match(serviceWorker, /"\.\/src\/voiceSettings\.js"/);
     assert.match(serviceWorker, /"\.\/src\/webSearch\.js"/);
     assert.match(serviceWorker, /"\.\/assets\/icons\/icon-512\.png"/);
   });

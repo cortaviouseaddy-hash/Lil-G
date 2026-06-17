@@ -10,6 +10,16 @@ const normalizers = [
       "I'm Lil-G, your browser-based AI companion. I can reply in chat and speak my answers out loud when talk-back is turned on."
   },
   {
+    pattern: /\b(role[-\s]?play|pretend|act as|play a scene|play a character)\b/i,
+    response:
+      "Absolutely. I can roleplay with you in chat. Tell me the scene, who you want me to be, and any boundaries or style you want, then I'll stay in character."
+  },
+  {
+    pattern: /\bdiscord\b.*\b(read|reply|message|dm|messages)\b|\b(read|reply|message|dm)\b.*\bdiscord\b/i,
+    response:
+      "I can help write Discord replies if you paste the messages here. This browser app cannot directly read your Discord account or send messages for you without an approved Discord bot, OAuth flow, or native companion app permission."
+  },
+  {
     pattern: /\b(help|can you|what can you do)\b/i,
     response:
       "I can answer back, talk out loud, brainstorm ideas, help you practice conversations, and keep the chat going. Try asking me a question."

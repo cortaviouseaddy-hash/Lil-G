@@ -1,4 +1,5 @@
 import { createAssistantMessage, createUserMessage, getLilGResponse } from "./chatEngine.js";
+import { detectActionIntent, formatActionReply, getLaunchTargets } from "./appActions.js";
 import {
   clearMemories,
   extractMemoryFact,
@@ -7,10 +8,25 @@ import {
   isClearMemoryRequest,
   isMemoryRecallRequest,
   loadMemories,
+  rememberAutomaticFacts,
   rememberFact,
   saveMemories
 } from "./memory.js";
+import {
+  createProfileSyncCode,
+  loadProfile,
+  parseProfileSyncCode,
+  saveProfile
+} from "./profileSync.js";
 import { canSpeak, speakText, stopSpeaking } from "./speech.js";
+import {
+  createPresetSettings,
+  createVoiceOptions,
+  getVoicePreset,
+  loadVoiceSettings,
+  saveVoiceSettings,
+  voicePresets
+} from "./voiceSettings.js";
 import { detectWakePhrase } from "./wakeWord.js";
 import { createWebSearchUrl, detectSearchIntent, formatSearchReply, searchInternet } from "./webSearch.js";
 
@@ -31,7 +47,23 @@ const elements = {
   talkBack: document.querySelector("[data-talk-back]"),
   stopSpeech: document.querySelector("[data-stop-speech]"),
   mic: document.querySelector("[data-mic]"),
-  wake: document.querySelector("[data-wake]")
+  wake: document.querySelector("[data-wake]"),
+  voicePresets: document.querySelector("[data-voice-presets]"),
+  voicePitch: document.querySelector("[data-voice-pitch]"),
+  voicePitchValue: document.querySelector("[data-voice-pitch-value]"),
+  voiceRate: document.querySelector("[data-voice-rate]"),
+  voiceRateValue: document.querySelector("[data-voice-rate-value]"),
+  profileName: document.querySelector("[data-profile-name]"),
+  saveProfile: document.querySelector("[data-save-profile]"),
+  exportProfile: document.querySelector("[data-export-profile]"),
+  copyProfile: document.querySelector("[data-copy-profile]"),
+  profileSyncCode: document.querySelector("[data-profile-sync-code]"),
+  importProfileCode: document.querySelector("[data-import-profile-code]"),
+  importProfile: document.querySelector("[data-import-profile]"),
+  quickLaunch: document.querySelector("[data-quick-launch]"),
+  screenShare: document.querySelector("[data-screen-share]"),
+  screenStop: document.querySelector("[data-screen-stop]"),
+  screenState: document.querySelector("[data-screen-state]")
 };
 
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -41,9 +73,17 @@ let isWakeListening = false;
 let isAwaitingWakeCommand = false;
 let deferredInstallPrompt;
 let memories = loadMemories();
+let voiceSettings = loadVoiceSettings();
+let profile = loadProfile();
+let availableVoices = [];
+let screenShareStream;
 
 renderMessages();
 renderMemories();
+setupVoiceSettings();
+setupProfileSync();
+setupQuickLaunch();
+setupScreenContext();
 updateStatus();
 setupSpeechRecognition();
 setupAppInstall();
@@ -59,6 +99,20 @@ elements.talkBack.addEventListener("change", () => {
   if (!elements.talkBack.checked) {
     stopSpeaking();
   }
+});
+
+elements.voicePitch.addEventListener("input", () => {
+  applyVoiceSettings({
+    ...voiceSettings,
+    pitch: Number(elements.voicePitch.value)
+  });
+});
+
+elements.voiceRate.addEventListener("input", () => {
+  applyVoiceSettings({
+    ...voiceSettings,
+    rate: Number(elements.voiceRate.value)
+  });
 });
 
 elements.stopSpeech.addEventListener("click", () => {
@@ -121,6 +175,34 @@ async function buildAssistantReply(content) {
     );
   }
 
+  const automaticMemoryResult = rememberAutomaticFacts(content, memories);
+
+  if (automaticMemoryResult.added.length) {
+    memories = automaticMemoryResult.memories;
+    saveMemories(memories);
+    renderMemories();
+  }
+
+  const screenReply = await handleScreenContextRequest(content);
+
+  if (screenReply) {
+    return createAssistantMessage(withSavedMemoryText(screenReply, automaticMemoryResult.added));
+  }
+
+  const actionIntent = detectActionIntent(content);
+
+  if (actionIntent.isAction) {
+    openExternalUrl(actionIntent.url);
+    return createAssistantMessage(withSavedMemoryText(formatActionReply(actionIntent), automaticMemoryResult.added), {
+      sources: [
+        {
+          title: actionIntent.title,
+          url: actionIntent.url
+        }
+      ]
+    });
+  }
+
   const searchIntent = detectSearchIntent(content);
 
   if (searchIntent.isSearch) {
@@ -129,7 +211,8 @@ async function buildAssistantReply(content) {
 
   const relevantMemories = getRelevantMemoryText(content, memories);
   const reply = getLilGResponse(content, messages, { relevantMemories });
-  return createAssistantMessage(reply);
+
+  return createAssistantMessage(withSavedMemoryText(reply, automaticMemoryResult.added));
 }
 
 async function searchAndReply(query) {
@@ -158,8 +241,15 @@ async function searchAndReply(query) {
 
 function speakAssistantReply(assistantMessage) {
   if (elements.talkBack.checked) {
-    const didSpeak = speakText(assistantMessage.content);
-    setStatus(didSpeak ? "Lil-G answered and spoke back." : "Lil-G answered. Speech is not available in this browser.");
+    const preset = getVoicePreset(voiceSettings.presetId);
+    const didSpeak = speakText(assistantMessage.content, {
+      voice: createVoiceOptions(voiceSettings, availableVoices)
+    });
+    setStatus(
+      didSpeak
+        ? `Lil-G answered with the ${preset.label} voice.`
+        : "Lil-G answered. Speech is not available in this browser."
+    );
   } else {
     setStatus("Lil-G answered in chat.");
   }
@@ -188,10 +278,27 @@ function acknowledgeWakePhrase() {
   renderMessages();
 
   if (elements.talkBack.checked) {
-    speakText(reply);
+    speakText(reply, {
+      voice: createVoiceOptions(voiceSettings, availableVoices)
+    });
   }
 
   setStatus("Wake phrase heard. Say your message now.");
+}
+
+function formatSavedMemoryText(addedMemories) {
+  if (!addedMemories.length) {
+    return "";
+  }
+
+  const memoryText = addedMemories.map((memory) => memory.text).join("; ");
+  return `I saved that to your local profile memory: ${memoryText}.`;
+}
+
+function withSavedMemoryText(reply, addedMemories) {
+  const savedMemoryText = formatSavedMemoryText(addedMemories);
+
+  return savedMemoryText ? `${reply}\n\n${savedMemoryText}` : reply;
 }
 
 function renderMessages() {
@@ -327,6 +434,157 @@ function setupSpeechRecognition() {
   });
 }
 
+function setupVoiceSettings() {
+  renderVoicePresetButtons();
+  syncVoiceControls();
+  loadAvailableVoices();
+
+  if (canSpeak() && typeof window.speechSynthesis.addEventListener === "function") {
+    window.speechSynthesis.addEventListener("voiceschanged", loadAvailableVoices);
+  }
+}
+
+function setupProfileSync() {
+  elements.profileName.value = profile.displayName;
+
+  elements.saveProfile.addEventListener("click", () => {
+    profile = saveProfile({
+      displayName: elements.profileName.value
+    });
+    elements.profileName.value = profile.displayName;
+    setStatus(profile.displayName ? `Profile saved for ${profile.displayName}.` : "Profile name cleared.");
+  });
+
+  elements.exportProfile.addEventListener("click", () => {
+    elements.profileSyncCode.value = createProfileSyncCode({
+      profile,
+      memories,
+      voiceSettings
+    });
+    setStatus("Profile sync code created. Paste it on another device to connect this profile.");
+  });
+
+  elements.copyProfile.addEventListener("click", async () => {
+    if (!elements.profileSyncCode.value) {
+      elements.profileSyncCode.value = createProfileSyncCode({
+        profile,
+        memories,
+        voiceSettings
+      });
+    }
+
+    try {
+      await navigator.clipboard.writeText(elements.profileSyncCode.value);
+      setStatus("Profile sync code copied.");
+    } catch {
+      setStatus("Copy is unavailable. Select and copy the sync code manually.");
+    }
+  });
+
+  elements.importProfile.addEventListener("click", () => {
+    try {
+      const payload = parseProfileSyncCode(elements.importProfileCode.value);
+      profile = saveProfile(payload.profile);
+      memories = saveMemories(payload.memories);
+      voiceSettings = saveVoiceSettings(payload.voiceSettings);
+      elements.profileName.value = profile.displayName;
+      elements.importProfileCode.value = "";
+      renderMemories();
+      syncVoiceControls();
+      setStatus("Profile imported on this device.");
+    } catch (error) {
+      setStatus(error.message);
+    }
+  });
+}
+
+function setupQuickLaunch() {
+  elements.quickLaunch.replaceChildren(
+    ...getLaunchTargets().map((target) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "secondary-button quick-launch-button";
+      button.textContent = target.title;
+      button.addEventListener("click", () => {
+        openExternalUrl(target.url);
+        setStatus(`Opening ${target.title}.`);
+      });
+      return button;
+    })
+  );
+}
+
+function setupScreenContext() {
+  if (!canShareScreen()) {
+    elements.screenShare.disabled = true;
+    elements.screenStop.disabled = true;
+    elements.screenState.textContent = "Screen sharing is unavailable in this browser.";
+    return;
+  }
+
+  elements.screenShare.addEventListener("click", async () => {
+    const result = await requestScreenShare();
+    setStatus(result.message);
+  });
+
+  elements.screenStop.addEventListener("click", () => {
+    stopScreenShare();
+    setStatus("Screen sharing stopped.");
+  });
+
+  updateScreenState();
+}
+
+function renderVoicePresetButtons() {
+  elements.voicePresets.replaceChildren(
+    ...voicePresets.map((preset) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "secondary-button voice-preset-button";
+      button.dataset.voicePreset = preset.id;
+      button.textContent = preset.label;
+      button.title = preset.description;
+      button.setAttribute("aria-pressed", String(preset.id === voiceSettings.presetId));
+      button.addEventListener("click", () => applyVoiceSettings(createPresetSettings(preset.id)));
+      return button;
+    })
+  );
+}
+
+function syncVoiceControls() {
+  const preset = getVoicePreset(voiceSettings.presetId);
+
+  elements.voicePitch.value = String(voiceSettings.pitch);
+  elements.voiceRate.value = String(voiceSettings.rate);
+  elements.voicePitchValue.textContent = voiceSettings.pitch.toFixed(2);
+  elements.voiceRateValue.textContent = voiceSettings.rate.toFixed(2);
+
+  for (const button of elements.voicePresets.querySelectorAll("[data-voice-preset]")) {
+    const isActive = button.dataset.voicePreset === preset.id;
+    button.classList.toggle("is-selected", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  }
+}
+
+function applyVoiceSettings(nextSettings) {
+  voiceSettings = saveVoiceSettings(nextSettings);
+  syncVoiceControls();
+
+  if (elements.talkBack.checked) {
+    const preset = getVoicePreset(voiceSettings.presetId);
+    setStatus(`Talk-back is on with the ${preset.label} voice.`);
+  }
+}
+
+function loadAvailableVoices() {
+  if (!canSpeak() || typeof window.speechSynthesis.getVoices !== "function") {
+    availableVoices = [];
+    return;
+  }
+
+  availableVoices = window.speechSynthesis.getVoices();
+}
+
 function handleVoiceTranscript(transcript) {
   const wakeResult = detectWakePhrase(transcript);
 
@@ -364,6 +622,90 @@ function handleVoiceTranscript(transcript) {
   }
 
   sendMessage(transcript);
+}
+
+async function handleScreenContextRequest(content) {
+  if (!isScreenContextRequest(content)) {
+    return "";
+  }
+
+  const result = await requestScreenShare();
+
+  if (!result.active) {
+    return result.message;
+  }
+
+  return `${result.message} I can keep track that you are sharing your screen, but this browser-only version does not run visual OCR or image understanding yet. Tell me what app or text you want help with, or paste the text, and I will respond using that context.`;
+}
+
+async function requestScreenShare() {
+  if (screenShareStream?.active) {
+    return {
+      active: true,
+      message: "Screen sharing is already active."
+    };
+  }
+
+  if (!canShareScreen()) {
+    return {
+      active: false,
+      message: "This browser does not support screen sharing for Lil-G."
+    };
+  }
+
+  try {
+    screenShareStream = await navigator.mediaDevices.getDisplayMedia({
+      video: true,
+      audio: false
+    });
+
+    const [track] = screenShareStream.getVideoTracks();
+    track?.addEventListener?.("ended", () => {
+      screenShareStream = undefined;
+      updateScreenState();
+    });
+    updateScreenState();
+
+    return {
+      active: true,
+      message: "Screen sharing is active."
+    };
+  } catch {
+    updateScreenState();
+    return {
+      active: false,
+      message: "Screen sharing was canceled or blocked."
+    };
+  }
+}
+
+function stopScreenShare() {
+  for (const track of screenShareStream?.getTracks() ?? []) {
+    track.stop();
+  }
+
+  screenShareStream = undefined;
+  updateScreenState();
+}
+
+function updateScreenState() {
+  const isSharing = Boolean(screenShareStream?.active);
+  elements.screenStop.disabled = !isSharing;
+  elements.screenState.textContent = isSharing
+    ? "Screen sharing is on. Full visual understanding needs a future OCR/vision service."
+    : "Screen sharing is off.";
+}
+
+function canShareScreen() {
+  return typeof navigator.mediaDevices?.getDisplayMedia === "function";
+}
+
+function isScreenContextRequest(content) {
+  return /\b(look at|see|watch|read|scan)\b.*\b(my\s+)?screen\b|\bscreen\b.*\b(context|share|sharing)\b/i.test(content);
+}
+
+function openExternalUrl(url) {
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 function startRecognition(options = {}) {
@@ -430,7 +772,8 @@ function updateStatus() {
     return;
   }
 
-  setStatus(elements.talkBack.checked ? "Talk-back is on." : "Talk-back is off.");
+  const preset = getVoicePreset(voiceSettings.presetId);
+  setStatus(elements.talkBack.checked ? `Talk-back is on with the ${preset.label} voice.` : "Talk-back is off.");
 }
 
 function setStatus(message) {

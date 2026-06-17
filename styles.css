@@ -27,7 +27,8 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -176,6 +177,137 @@ h1 {
   background: #ff5e7a;
 }
 
+.settings-card {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.025);
+  padding: 0.9rem 1rem;
+}
+
+.settings-card summary {
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.settings-grid {
+  display: grid;
+  gap: 1rem;
+  padding-top: 0.9rem;
+}
+
+.settings-group p,
+.device-access-note p {
+  color: var(--muted);
+  line-height: 1.45;
+  margin: 0.35rem 0 0;
+}
+
+.profile-sync-grid,
+.quick-launch-grid,
+.screen-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.8rem;
+}
+
+.profile-sync-grid label,
+.text-area-control {
+  display: grid;
+  gap: 0.4rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.profile-sync-grid label {
+  flex: 1 1 12rem;
+}
+
+.profile-sync-grid input,
+.text-area-control textarea {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.9rem;
+  color: var(--text);
+  background: #0f131d;
+  outline: none;
+  padding: 0.75rem 0.9rem;
+}
+
+.profile-sync-grid input:focus,
+.text-area-control textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 0.2rem rgba(124, 219, 181, 0.16);
+}
+
+.text-area-control {
+  margin-top: 0.8rem;
+}
+
+.text-area-control textarea {
+  min-height: 4.8rem;
+  resize: vertical;
+}
+
+.quick-launch-button {
+  flex: 1 1 8rem;
+}
+
+.voice-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin-top: 0.8rem;
+}
+
+.voice-preset-button {
+  border: 1px solid transparent;
+  padding: 0.7rem 0.85rem;
+}
+
+.voice-preset-button.is-selected {
+  border-color: var(--accent);
+  color: #07120e;
+  background: var(--accent);
+}
+
+.range-control {
+  display: grid;
+  gap: 0.45rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.range-control span {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.range-control output {
+  color: var(--accent);
+}
+
+.range-control input {
+  accent-color: var(--accent);
+}
+
+.device-access-note {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 0.85rem;
+}
+
+.device-access-note strong {
+  color: var(--accent);
+}
+
+.inline-status {
+  color: var(--muted);
+  margin: 0.7rem 0 0;
+}
+
 .messages {
   display: flex;
   flex: 1;
@@ -274,5 +406,9 @@ h1 {
 
   .chat-card {
     min-height: 35rem;
+  }
+
+  .voice-preset-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

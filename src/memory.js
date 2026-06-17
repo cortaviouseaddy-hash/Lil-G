@@ -3,7 +3,15 @@ export const MEMORY_STORAGE_KEY = "lil-g-memories-v1";
 const explicitRememberPattern = /^\s*remember(?:\s+that)?\s+(.+?)\s*$/i;
 const namePatterns = [
   /^\s*my\s+name\s+is\s+(.+?)\s*$/i,
-  /^\s*call\s+me\s+(.+?)\s*$/i
+  /^\s*call\s+me\s+(.+?)\s*$/i,
+  /^\s*i\s+go\s+by\s+(.+?)\s*$/i
+];
+const favoritePattern = /^\s*my\s+favorite\s+([a-z][a-z0-9\s-]{1,40})\s+is\s+(.+?)\s*$/i;
+const preferencePattern = /^\s*i\s+(like|love|enjoy|prefer|hate|dislike)\s+(.+?)\s*$/i;
+const speechStylePatterns = [
+  /^\s*i\s+(?:usually\s+|often\s+)?(?:talk|speak)\s+(?:like|in)\s+(.+?)\s*$/i,
+  /^\s*i\s+(?:usually\s+|often\s+)?say\s+(.+?)\s*$/i,
+  /^\s*i\s+talk\s+about\s+(.+?)\s+a\s+lot\s*$/i
 ];
 const recallPattern = /\b(what do you remember|do you remember|remember about me|my memories)\b/i;
 const clearPattern = /\b(forget everything|clear memory|delete memory|reset memory|forget what you remember)\b/i;
@@ -96,6 +104,36 @@ export function rememberFact(input, memories, options = {}) {
   };
 }
 
+export function rememberAutomaticFacts(input, memories, options = {}) {
+  const facts = extractAutomaticMemoryFacts(input);
+  let updatedMemories = memories;
+  const added = [];
+  const duplicates = [];
+
+  for (const fact of facts) {
+    const result = rememberFact(fact, updatedMemories, options);
+
+    if (!result.memory) {
+      continue;
+    }
+
+    updatedMemories = result.memories;
+
+    if (result.duplicate) {
+      duplicates.push(result.memory);
+      continue;
+    }
+
+    added.push(result.memory);
+  }
+
+  return {
+    added,
+    duplicates,
+    memories: updatedMemories
+  };
+}
+
 export function clearMemories(storage = globalThis.localStorage) {
   try {
     storage.removeItem(MEMORY_STORAGE_KEY);
@@ -130,11 +168,71 @@ export function getRelevantMemoryText(input, memories, limit = 2) {
   return scoredMemories;
 }
 
+export function extractAutomaticMemoryFacts(input) {
+  const value = input.trim();
+
+  if (!value || isQuestion(value) || explicitRememberPattern.test(value)) {
+    return [];
+  }
+
+  const facts = [];
+  const nameFact = extractNameFact(value);
+
+  if (nameFact) {
+    facts.push(nameFact);
+  }
+
+  const favoriteMatch = value.match(favoritePattern);
+
+  if (favoriteMatch) {
+    facts.push(`your favorite ${cleanFact(favoriteMatch[1])} is ${cleanFact(favoriteMatch[2])}`);
+  }
+
+  const preferenceMatch = value.match(preferencePattern);
+
+  if (preferenceMatch && isWorthRemembering(preferenceMatch[2])) {
+    facts.push(`you ${preferenceMatch[1].toLowerCase()} ${cleanFact(preferenceMatch[2])}`);
+  }
+
+  for (const pattern of speechStylePatterns) {
+    const match = value.match(pattern);
+
+    if (match && isWorthRemembering(match[1])) {
+      facts.push(`your speech pattern includes ${cleanFact(match[1])}`);
+      break;
+    }
+  }
+
+  return [...new Set(facts)].slice(0, 2);
+}
+
 function cleanFact(value) {
   return value
     .trim()
     .replace(/[.?!]+$/g, "")
     .replace(/\s+/g, " ");
+}
+
+function extractNameFact(input) {
+  for (const pattern of namePatterns) {
+    const match = input.match(pattern);
+
+    if (match) {
+      return cleanFact(`your name is ${match[1]}`);
+    }
+  }
+
+  return "";
+}
+
+function isQuestion(value) {
+  return value.includes("?") || /^(?:what|why|how|when|where|who|can|could|would|should|do|does|did)\b/i.test(value);
+}
+
+function isWorthRemembering(value) {
+  const fact = cleanFact(value);
+
+  return fact.length >= 3 && fact.length <= 120;
 }
 
 function createMemoryId() {

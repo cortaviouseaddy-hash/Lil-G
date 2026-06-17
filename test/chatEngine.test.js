@@ -1,19 +1,36 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { detectActionIntent, formatActionReply } from "../src/appActions.js";
 import { createAssistantMessage, createUserMessage, getLilGResponse } from "../src/chatEngine.js";
 import {
   extractMemoryFact,
+  extractAutomaticMemoryFacts,
   formatMemoryList,
   getRelevantMemoryText,
   isClearMemoryRequest,
   isMemoryRecallRequest,
   loadMemories,
   MEMORY_STORAGE_KEY,
+  rememberAutomaticFacts,
   rememberFact,
   saveMemories
 } from "../src/memory.js";
+import {
+  createProfileSyncCode,
+  loadProfile,
+  parseProfileSyncCode,
+  PROFILE_STORAGE_KEY,
+  saveProfile
+} from "../src/profileSync.js";
 import { speakText, stopSpeaking } from "../src/speech.js";
+import {
+  createPresetSettings,
+  createVoiceOptions,
+  loadVoiceSettings,
+  VOICE_SETTINGS_STORAGE_KEY,
+  voicePresets
+} from "../src/voiceSettings.js";
 import { detectWakePhrase, isWakePhrase } from "../src/wakeWord.js";
 import { createWebSearchUrl, detectSearchIntent, formatSearchReply, searchInternet } from "../src/webSearch.js";
 
@@ -54,6 +71,39 @@ describe("getLilGResponse", () => {
     });
 
     assert.match(response, /I remember you like basketball/);
+  });
+
+  it("supports roleplay requests", () => {
+    const response = getLilGResponse("Can you roleplay as a space pilot?");
+
+    assert.match(response, /roleplay/i);
+    assert.match(response, /stay in character/i);
+  });
+
+  it("explains Discord message limits and pasted-message workflow", () => {
+    const response = getLilGResponse("Can you read my Discord messages and reply?");
+
+    assert.match(response, /paste the messages/i);
+    assert.match(response, /cannot directly read/i);
+  });
+});
+
+describe("app action helpers", () => {
+  it("detects supported app launch requests", () => {
+    const action = detectActionIntent("open Discord");
+
+    assert.equal(action.isAction, true);
+    assert.equal(action.title, "Discord");
+    assert.equal(action.url, "https://discord.com/app");
+    assert.match(formatActionReply(action), /Opening Discord/);
+  });
+
+  it("detects browser search launch requests", () => {
+    const action = detectActionIntent("open browser and search for Lil G");
+
+    assert.equal(action.isAction, true);
+    assert.equal(action.kind, "search");
+    assert.match(action.url, /google\.com\/search/);
   });
 });
 
@@ -113,6 +163,44 @@ describe("speech helpers", () => {
   });
 });
 
+describe("voice settings helpers", () => {
+  it("defines six voice presets including a robotic option", () => {
+    assert.equal(voicePresets.length, 6);
+    assert.equal(voicePresets.some((preset) => preset.id === "robotic"), true);
+  });
+
+  it("loads saved voice settings and builds speech options", () => {
+    const storage = createMemoryStorage();
+    storage.setItem(
+      VOICE_SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        presetId: "robotic",
+        pitch: 0.7,
+        rate: 0.8
+      })
+    );
+
+    const settings = loadVoiceSettings(storage);
+    const options = createVoiceOptions(settings, [
+      { name: "Zarvox", lang: "en-US" },
+      { name: "Sample German", lang: "de-DE" }
+    ]);
+
+    assert.equal(settings.presetId, "robotic");
+    assert.equal(options.pitch, 0.7);
+    assert.equal(options.rate, 0.8);
+    assert.equal(options.voice.name, "Zarvox");
+  });
+
+  it("creates preset defaults for the selected style", () => {
+    const settings = createPresetSettings("deep");
+
+    assert.equal(settings.presetId, "deep");
+    assert.equal(settings.pitch < 1, true);
+    assert.equal(settings.rate < 1, true);
+  });
+});
+
 describe("wake word helpers", () => {
   it("detects Lil-G wake phrases", () => {
     assert.equal(isWakePhrase("hey Lil G"), true);
@@ -161,6 +249,21 @@ describe("memory helpers", () => {
     assert.equal(isClearMemoryRequest("clear memory"), true);
   });
 
+  it("extracts and saves automatic profile memories", () => {
+    assert.deepEqual(extractAutomaticMemoryFacts("my favorite music is jazz"), ["your favorite music is jazz"]);
+    assert.deepEqual(extractAutomaticMemoryFacts("I talk about basketball a lot"), [
+      "your speech pattern includes basketball"
+    ]);
+
+    const result = rememberAutomaticFacts("I love Memphis rap.", [], {
+      id: "memory-automatic",
+      createdAt: "2026-06-17T00:00:00.000Z"
+    });
+
+    assert.equal(result.added.length, 1);
+    assert.equal(result.memories[0].text, "you love Memphis rap");
+  });
+
   it("finds relevant memory text", () => {
     const memories = [
       { id: "memory-1", text: "you like basketball", createdAt: "now" },
@@ -168,6 +271,33 @@ describe("memory helpers", () => {
     ];
 
     assert.deepEqual(getRelevantMemoryText("Let's talk basketball", memories), ["you like basketball"]);
+  });
+});
+
+describe("profile sync helpers", () => {
+  it("saves and loads a local profile", () => {
+    const storage = createMemoryStorage();
+    const profile = saveProfile({ displayName: " Corey  G " }, storage);
+
+    assert.deepEqual(profile, { displayName: "Corey G" });
+    assert.deepEqual(loadProfile(storage), profile);
+    assert.equal(storage.getItem(PROFILE_STORAGE_KEY).includes("Corey G"), true);
+  });
+
+  it("round-trips a profile sync code", () => {
+    const code = createProfileSyncCode(
+      {
+        profile: { displayName: "Corey" },
+        memories: [{ id: "memory-1", text: "you like basketball", createdAt: "now" }],
+        voiceSettings: { presetId: "robotic", pitch: 0.7, rate: 0.8 }
+      },
+      { createdAt: "2026-06-17T00:00:00.000Z" }
+    );
+    const payload = parseProfileSyncCode(code);
+
+    assert.equal(payload.profile.displayName, "Corey");
+    assert.equal(payload.memories[0].text, "you like basketball");
+    assert.equal(payload.voiceSettings.presetId, "robotic");
   });
 });
 

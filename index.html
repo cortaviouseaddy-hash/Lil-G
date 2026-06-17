@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Lil-G Talk Back</title>
-    <meta name="description" content="A phone-installable chat assistant that responds, talks back, searches the internet, remembers locally, and listens for Lil-G wake phrases." />
+    <meta name="description" content="An installable chat assistant for phones, tablets, laptops, and desktops that talks back, searches the internet, remembers locally, and listens for Lil-G wake phrases." />
     <meta name="theme-color" content="#10131a" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -26,10 +26,11 @@
           device.
         </p>
         <div class="install-card">
-          <strong>Install it on your phone</strong>
+          <strong>Install it on your phone, tablet, laptop, or desktop</strong>
           <p>
-            Android can show an install button. On iPhone, open this site in
-            Safari, tap Share, then choose Add to Home Screen.
+            Chrome, Edge, and Android can show an install button. On iPhone or
+            iPad, open this site in Safari, tap Share, then choose Add to Home
+            Screen.
           </p>
           <button type="button" data-install hidden>Install app</button>
         </div>
@@ -52,6 +53,85 @@
           <button class="secondary-button" type="button" data-wake>Start wake listening</button>
           <button class="secondary-button" type="button" data-stop-speech>Stop speaking</button>
         </div>
+
+        <details class="settings-card" id="voice-settings">
+          <summary>Voice and device settings</summary>
+          <div class="settings-grid">
+            <div class="settings-group">
+              <strong>Voice style</strong>
+              <p>Choose one of six talk-back styles. The exact system voice depends on your browser.</p>
+              <div class="voice-preset-grid" data-voice-presets></div>
+            </div>
+
+            <div class="settings-group">
+              <strong>Profile sync</strong>
+              <p>
+                Save a local profile name, export a sync code, and import that
+                code on another installed copy so Lil-G recognizes the same
+                memories and voice settings there too.
+              </p>
+              <div class="profile-sync-grid">
+                <label>
+                  <span>Profile name</span>
+                  <input data-profile-name autocomplete="name" placeholder="Your name or handle" type="text" />
+                </label>
+                <button class="secondary-button" type="button" data-save-profile>Save profile</button>
+                <button class="secondary-button" type="button" data-export-profile>Export sync code</button>
+                <button class="secondary-button" type="button" data-copy-profile>Copy code</button>
+              </div>
+              <label class="text-area-control">
+                <span>Your sync code</span>
+                <textarea data-profile-sync-code readonly rows="3"></textarea>
+              </label>
+              <label class="text-area-control">
+                <span>Import sync code from another device</span>
+                <textarea data-import-profile-code rows="3"></textarea>
+              </label>
+              <button class="secondary-button" type="button" data-import-profile>Import profile</button>
+            </div>
+
+            <div class="settings-group">
+              <strong>Quick launch</strong>
+              <p>Open supported web apps or browser pages in a new tab. Some devices may hand these links off to installed apps.</p>
+              <div class="quick-launch-grid" data-quick-launch></div>
+            </div>
+
+            <label class="range-control">
+              <span>Pitch <output data-voice-pitch-value>1.00</output></span>
+              <input data-voice-pitch min="0.4" max="1.8" step="0.01" type="range" value="1" />
+            </label>
+
+            <label class="range-control">
+              <span>Speed <output data-voice-rate-value>1.00</output></span>
+              <input data-voice-rate min="0.65" max="1.45" step="0.01" type="range" value="1" />
+            </label>
+
+            <div class="settings-group">
+              <strong>Screen context</strong>
+              <p>
+                Share your screen when you want Lil-G to know you are looking at
+                something. Full screen reading still needs a future OCR or vision
+                service, so paste text when you want exact help.
+              </p>
+              <div class="screen-controls">
+                <button class="secondary-button" type="button" data-screen-share>Share screen</button>
+                <button class="secondary-button" type="button" data-screen-stop>Stop sharing</button>
+              </div>
+              <p class="inline-status" data-screen-state>Screen sharing is off.</p>
+            </div>
+
+            <div class="device-access-note">
+              <strong>Native app and Discord access</strong>
+              <p>
+                Lil-G can listen while this app is open and the browser allows the
+                microphone. Reading Discord directly, sending messages, controlling
+                other apps, showing system pop-ups, or listening after the app is
+                closed requires a native companion app, approved Discord bot or
+                OAuth integration, and operating-system permissions.
+              </p>
+            </div>
+          </div>
+        </details>
 
         <div class="messages" data-chat-messages aria-live="polite"></div>
 
