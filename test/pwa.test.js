@@ -1,0 +1,39 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { describe, it } from "node:test";
+
+const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+describe("PWA install structure", () => {
+  it("defines an installable web app manifest", async () => {
+    const manifest = JSON.parse(await readFile(new URL("../manifest.webmanifest", import.meta.url), "utf8"));
+
+    assert.equal(manifest.name, "Lil-G Talk Back");
+    assert.equal(manifest.short_name, "Lil-G");
+    assert.equal(manifest.display, "standalone");
+    assert.equal(manifest.start_url, "/");
+    assert.equal(manifest.theme_color, "#10131a");
+    assert.equal(manifest.icons.length, 2);
+    assert.deepEqual(
+      manifest.icons.map((icon) => icon.sizes),
+      ["192x192", "512x512"]
+    );
+  });
+
+  it("includes valid PNG home-screen icons", async () => {
+    const icon192 = await readFile(new URL("../assets/icons/icon-192.png", import.meta.url));
+    const icon512 = await readFile(new URL("../assets/icons/icon-512.png", import.meta.url));
+
+    assert.deepEqual(icon192.subarray(0, pngSignature.length), pngSignature);
+    assert.deepEqual(icon512.subarray(0, pngSignature.length), pngSignature);
+  });
+
+  it("caches the app shell in the service worker", async () => {
+    const serviceWorker = await readFile(new URL("../sw.js", import.meta.url), "utf8");
+
+    assert.match(serviceWorker, /const CACHE_NAME = "lil-g-app-v1"/);
+    assert.match(serviceWorker, /"\/index\.html"/);
+    assert.match(serviceWorker, /"\/manifest\.webmanifest"/);
+    assert.match(serviceWorker, /"\/assets\/icons\/icon-512\.png"/);
+  });
+});

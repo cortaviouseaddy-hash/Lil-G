@@ -76,10 +76,34 @@ h1 {
   margin: 0 0 1rem;
 }
 
-.hero p:last-child {
+.hero > p {
   color: var(--muted);
   font-size: 1.1rem;
   line-height: 1.6;
+}
+
+.install-card {
+  margin-top: 1.5rem;
+  border: 1px solid rgba(124, 219, 181, 0.22);
+  border-radius: 1.25rem;
+  background: rgba(124, 219, 181, 0.08);
+  padding: 1rem;
+}
+
+.install-card strong {
+  display: block;
+  color: var(--accent);
+  margin-bottom: 0.4rem;
+}
+
+.install-card p {
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0 0 0.85rem;
+}
+
+.install-card button[hidden] {
+  display: none;
 }
 
 .chat-card {

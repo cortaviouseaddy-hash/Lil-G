@@ -4,6 +4,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Lil-G Talk Back</title>
+    <meta name="description" content="A phone-installable chat assistant that responds, talks back, and listens for Lil-G wake phrases." />
+    <meta name="theme-color" content="#10131a" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Lil-G" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./assets/icons/icon-192.png" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -16,6 +24,14 @@
           "Hey Lil-G" if your browser supports speech recognition. Lil-G replies
           in chat and can speak the answer out loud.
         </p>
+        <div class="install-card">
+          <strong>Install it on your phone</strong>
+          <p>
+            Android can show an install button. On iPhone, open this site in
+            Safari, tap Share, then choose Add to Home Screen.
+          </p>
+          <button type="button" data-install hidden>Install app</button>
+        </div>
       </section>
 
       <section class="chat-card" aria-label="Lil-G chat">

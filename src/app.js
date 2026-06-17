@@ -11,6 +11,7 @@ const messages = [
 const elements = {
   form: document.querySelector("[data-chat-form]"),
   input: document.querySelector("[data-chat-input]"),
+  install: document.querySelector("[data-install]"),
   messages: document.querySelector("[data-chat-messages]"),
   status: document.querySelector("[data-status]"),
   talkBack: document.querySelector("[data-talk-back]"),
@@ -24,10 +25,13 @@ let recognition;
 let isRecognitionActive = false;
 let isWakeListening = false;
 let isAwaitingWakeCommand = false;
+let deferredInstallPrompt;
 
 renderMessages();
 updateStatus();
 setupSpeechRecognition();
+setupAppInstall();
+registerServiceWorker();
 
 elements.form.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -234,6 +238,45 @@ function startRecognition(options = {}) {
 function updateWakeButton() {
   elements.wake.classList.toggle("is-listening", isWakeListening);
   elements.wake.textContent = isWakeListening ? "Stop wake listening" : "Start wake listening";
+}
+
+function setupAppInstall() {
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    elements.install.hidden = false;
+  });
+
+  window.addEventListener("appinstalled", () => {
+    deferredInstallPrompt = undefined;
+    elements.install.hidden = true;
+    setStatus("Lil-G is installed on this device.");
+  });
+
+  elements.install.addEventListener("click", async () => {
+    if (!deferredInstallPrompt) {
+      setStatus("Use your browser menu to add Lil-G to your home screen.");
+      return;
+    }
+
+    deferredInstallPrompt.prompt();
+    const choice = await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = undefined;
+    elements.install.hidden = true;
+    setStatus(choice.outcome === "accepted" ? "Installing Lil-G." : "Install canceled.");
+  });
+}
+
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) {
+    return;
+  }
+
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      setStatus("Lil-G works online, but offline app setup is unavailable.");
+    });
+  });
 }
 
 function updateStatus() {

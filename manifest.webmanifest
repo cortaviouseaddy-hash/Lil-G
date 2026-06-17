@@ -1,0 +1,28 @@
+{
+  "name": "Lil-G Talk Back",
+  "short_name": "Lil-G",
+  "description": "A chat assistant that responds, talks back, and listens for Lil-G wake phrases.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "browser"],
+  "background_color": "#10131a",
+  "theme_color": "#10131a",
+  "orientation": "portrait",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
