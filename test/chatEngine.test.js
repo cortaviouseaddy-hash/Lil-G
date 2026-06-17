@@ -18,7 +18,7 @@ describe("getLilGResponse", () => {
   });
 
   it("answers questions with a next-step response", () => {
-    const response = getLilGResponse("Can you help me build something?");
+    const response = getLilGResponse("How should I start building something?");
 
     assert.match(response, /Good question/);
   });
