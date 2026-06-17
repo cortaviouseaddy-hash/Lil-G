@@ -5,8 +5,8 @@ Lil-G is a lightweight browser chat assistant that can respond in text and talk 
 ## Features
 
 - Chat UI for sending messages to Lil-G.
-- Startup intro with a flashing "Made by G Fairy Goon" credit and white orb assistant greeting.
-- Avatar customization for identity label, color, shape, hair, face, and body style.
+- Startup intro with a flashing "Made by GFerryGoon" credit and white orb assistant greeting.
+- Avatar customization for identity label, color, shape, hair, face, body style, and clothes.
 - Built-in response engine so Lil-G can answer immediately without an API key.
 - Internet search commands for phrases like "search the internet for..." or "look up...".
 - Device-local memory: say "remember that..." or share profile facts like your name, favorite things, interests, or speech style, and Lil-G can recall them later on the same device.
@@ -53,7 +53,7 @@ Lil-G also saves some profile-style memories automatically when you say things l
 
 ## Startup and avatar customization
 
-On startup, Lil-G shows a flashing **Made by G Fairy Goon** credit, becomes a white orb, introduces itself as your personal help assistant, and points you toward customization.
+On startup, Lil-G shows a flashing **Made by GFerryGoon** credit, becomes a white orb, introduces itself as your personal help assistant, and points you toward customization.
 
 The avatar builder lets you choose:
 
@@ -63,8 +63,9 @@ The avatar builder lets you choose:
 - Hair style
 - Face style
 - Body style
+- Clothes
 
-You can also customize through chat or voice commands such as `change my avatar color to purple`, `set my avatar hair to curls`, or `make my avatar a boy`.
+You can also customize through chat or voice commands such as `change my avatar color to purple`, `set my avatar hair to curls`, `change my avatar clothes to hoodie`, or `make my avatar a boy`.
 
 The avatar is intentionally smooth, stylized, and non-explicit. It uses abstract shapes only and does not render nudity, genitals, or sexual details.
 

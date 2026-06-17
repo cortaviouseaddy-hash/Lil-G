@@ -6,7 +6,8 @@ export const avatarOptions = {
   shape: ["orb", "soft-square", "star", "diamond", "capsule"],
   hair: ["none", "short", "curls", "long", "spikes"],
   face: ["friendly", "calm", "focused", "playful"],
-  body: ["float", "slim", "soft", "strong"]
+  body: ["float", "slim", "soft", "strong"],
+  clothes: ["glow-suit", "hoodie", "jacket", "robe", "armor"]
 };
 
 const defaultAvatarSettings = {
@@ -16,6 +17,7 @@ const defaultAvatarSettings = {
   hair: "none",
   face: "friendly",
   body: "float",
+  clothes: "glow-suit",
   customized: false
 };
 
@@ -51,6 +53,10 @@ const commandPatterns = [
   {
     key: "body",
     pattern: /\b(?:make|set|change)\s+(?:my\s+)?avatar\s+body\s+(?:to\s+|as\s+)?(float|floating|slim|soft|strong)\b/i
+  },
+  {
+    key: "clothes",
+    pattern: /\b(?:make|set|change)\s+(?:my\s+)?avatar\s+(?:clothes|clothing|outfit)\s+(?:to\s+|as\s+)?(glow[-\s]?suit|hoodie|jacket|robe|armor)\b/i
   }
 ];
 
@@ -91,6 +97,7 @@ export function normalizeAvatarSettings(settings = {}) {
     hair: normalizeOption("hair", settings.hair),
     face: normalizeOption("face", settings.face),
     body: normalizeOption("body", settings.body),
+    clothes: normalizeOption("clothes", settings.clothes),
     customized: Boolean(settings.customized)
   };
 }
@@ -136,7 +143,9 @@ export function formatAvatarSummary(settings) {
 
   return `${formatOption(avatar.color)} ${formatOption(avatar.shape)} avatar with ${formatOption(
     avatar.hair
-  )} hair, a ${formatOption(avatar.face)} face, and a ${formatOption(avatar.body)} body style`;
+  )} hair, a ${formatOption(avatar.face)} face, a ${formatOption(avatar.body)} body style, and ${formatOption(
+    avatar.clothes
+  )} clothes`;
 }
 
 function normalizeOption(key, value) {

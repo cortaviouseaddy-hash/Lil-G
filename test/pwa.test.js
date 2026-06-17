@@ -32,6 +32,13 @@ describe("PWA install structure", () => {
     assert.deepEqual(icon512.subarray(0, pngSignature.length), pngSignature);
   });
 
+  it("includes startup credit and avatar clothes controls", async () => {
+    const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+
+    assert.match(html, /Made by GFerryGoon/);
+    assert.match(html, /data-avatar-options="clothes"/);
+  });
+
   it("caches the app shell in the service worker", async () => {
     const serviceWorker = await readFile(new URL("../sw.js", import.meta.url), "utf8");
 

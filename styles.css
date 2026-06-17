@@ -372,11 +372,56 @@ h1 {
 
 .avatar-torso {
   z-index: 1;
+  position: relative;
   width: 5.6rem;
   height: 4rem;
   margin-top: -0.35rem;
   border-radius: 2.2rem 2.2rem 2.8rem 2.8rem;
   opacity: 0.88;
+}
+
+.avatar-torso::before {
+  position: absolute;
+  inset: 0.45rem 0.55rem 0.35rem;
+  border-radius: inherit;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.28), transparent 45%),
+    rgba(16, 19, 26, 0.26);
+  content: "";
+}
+
+.avatar-figure[data-clothes="hoodie"] .avatar-torso::before {
+  inset: 0.3rem 0.4rem 0.25rem;
+  border-radius: 1.8rem 1.8rem 2.4rem 2.4rem;
+  background:
+    radial-gradient(circle at 50% 0.15rem, rgba(255, 255, 255, 0.28) 0 0.85rem, transparent 0.9rem),
+    linear-gradient(90deg, transparent 48%, rgba(255, 255, 255, 0.3) 48% 52%, transparent 52%),
+    rgba(24, 29, 41, 0.55);
+}
+
+.avatar-figure[data-clothes="jacket"] .avatar-torso::before {
+  inset: 0.25rem 0.35rem 0.25rem;
+  border-radius: 1.2rem 1.2rem 2rem 2rem;
+  background:
+    linear-gradient(115deg, rgba(17, 24, 39, 0.72) 0 43%, rgba(255, 255, 255, 0.32) 44% 48%, transparent 49%),
+    linear-gradient(245deg, rgba(17, 24, 39, 0.72) 0 43%, rgba(255, 255, 255, 0.32) 44% 48%, transparent 49%);
+}
+
+.avatar-figure[data-clothes="robe"] .avatar-torso::before {
+  inset: 0.2rem 0.25rem -0.1rem;
+  border-radius: 2.4rem 2.4rem 1.2rem 1.2rem;
+  background:
+    linear-gradient(90deg, transparent 46%, rgba(255, 255, 255, 0.34) 46% 54%, transparent 54%),
+    rgba(42, 50, 70, 0.62);
+}
+
+.avatar-figure[data-clothes="armor"] .avatar-torso::before {
+  inset: 0.25rem 0.45rem 0.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: 1.1rem 1.1rem 2rem 2rem;
+  background:
+    linear-gradient(90deg, transparent 47%, rgba(255, 255, 255, 0.45) 47% 53%, transparent 53%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.38), rgba(15, 23, 42, 0.42));
 }
 
 .avatar-figure[data-body="float"] .avatar-torso {

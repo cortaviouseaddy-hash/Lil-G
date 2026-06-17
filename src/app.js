@@ -582,6 +582,7 @@ function renderAvatar() {
   elements.avatarFigure.dataset.hair = avatar.hair;
   elements.avatarFigure.dataset.face = avatar.face;
   elements.avatarFigure.dataset.body = avatar.body;
+  elements.avatarFigure.dataset.clothes = avatar.clothes;
   elements.avatarSummary.textContent = `Current avatar: ${formatAvatarSummary(avatar)}.`;
 
   for (const group of elements.avatarOptionGroups) {

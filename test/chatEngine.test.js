@@ -136,7 +136,8 @@ describe("avatar settings helpers", () => {
         shape: "star",
         hair: "curls",
         face: "playful",
-        body: "soft"
+        body: "soft",
+        clothes: "hoodie"
       }),
       storage
     );
@@ -145,16 +146,19 @@ describe("avatar settings helpers", () => {
     assert.equal(loadAvatarSettings(storage).hair, "curls");
     assert.equal(storage.getItem(AVATAR_STORAGE_KEY).includes("purple"), true);
     assert.match(formatAvatarSummary(settings), /purple star avatar/);
+    assert.match(formatAvatarSummary(settings), /hoodie clothes/);
   });
 
   it("detects avatar customization commands for voice or chat", () => {
     const colorCommand = detectAvatarCommand("change my avatar color to purple", loadAvatarSettings());
     const hairCommand = detectAvatarCommand("set my avatar hair to curls", colorCommand.settings);
+    const clothesCommand = detectAvatarCommand("change my avatar clothes to jacket", hairCommand.settings);
 
     assert.equal(colorCommand.isAvatarCommand, true);
     assert.equal(colorCommand.settings.color, "purple");
     assert.deepEqual(colorCommand.changedKeys, ["color"]);
     assert.equal(hairCommand.settings.hair, "curls");
+    assert.equal(clothesCommand.settings.clothes, "jacket");
   });
 });
 
