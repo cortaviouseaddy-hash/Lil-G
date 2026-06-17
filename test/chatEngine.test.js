@@ -2,6 +2,15 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { detectActionIntent, formatActionReply } from "../src/appActions.js";
+import {
+  applyAvatarUpdate,
+  avatarOptions,
+  AVATAR_STORAGE_KEY,
+  detectAvatarCommand,
+  formatAvatarSummary,
+  loadAvatarSettings,
+  saveAvatarSettings
+} from "../src/avatarSettings.js";
 import { createAssistantMessage, createUserMessage, getLilGResponse } from "../src/chatEngine.js";
 import {
   extractMemoryFact,
@@ -104,6 +113,48 @@ describe("app action helpers", () => {
     assert.equal(action.isAction, true);
     assert.equal(action.kind, "search");
     assert.match(action.url, /google\.com\/search/);
+  });
+});
+
+describe("avatar settings helpers", () => {
+  it("loads defaults for a smooth white orb avatar", () => {
+    const settings = loadAvatarSettings(createMemoryStorage());
+
+    assert.equal(settings.color, "white");
+    assert.equal(settings.shape, "orb");
+    assert.equal(settings.customized, false);
+    assert.equal(avatarOptions.identity.includes("boy"), true);
+    assert.equal(avatarOptions.identity.includes("girl"), true);
+  });
+
+  it("saves explicit avatar choices", () => {
+    const storage = createMemoryStorage();
+    const settings = saveAvatarSettings(
+      applyAvatarUpdate(loadAvatarSettings(storage), {
+        identity: "girl",
+        color: "purple",
+        shape: "star",
+        hair: "curls",
+        face: "playful",
+        body: "soft"
+      }),
+      storage
+    );
+
+    assert.equal(settings.customized, true);
+    assert.equal(loadAvatarSettings(storage).hair, "curls");
+    assert.equal(storage.getItem(AVATAR_STORAGE_KEY).includes("purple"), true);
+    assert.match(formatAvatarSummary(settings), /purple star avatar/);
+  });
+
+  it("detects avatar customization commands for voice or chat", () => {
+    const colorCommand = detectAvatarCommand("change my avatar color to purple", loadAvatarSettings());
+    const hairCommand = detectAvatarCommand("set my avatar hair to curls", colorCommand.settings);
+
+    assert.equal(colorCommand.isAvatarCommand, true);
+    assert.equal(colorCommand.settings.color, "purple");
+    assert.deepEqual(colorCommand.changedKeys, ["color"]);
+    assert.equal(hairCommand.settings.hair, "curls");
   });
 });
 
@@ -289,7 +340,8 @@ describe("profile sync helpers", () => {
       {
         profile: { displayName: "Corey" },
         memories: [{ id: "memory-1", text: "you like basketball", createdAt: "now" }],
-        voiceSettings: { presetId: "robotic", pitch: 0.7, rate: 0.8 }
+        voiceSettings: { presetId: "robotic", pitch: 0.7, rate: 0.8 },
+        avatarSettings: { identity: "boy", color: "blue", shape: "diamond", hair: "short" }
       },
       { createdAt: "2026-06-17T00:00:00.000Z" }
     );
@@ -298,6 +350,7 @@ describe("profile sync helpers", () => {
     assert.equal(payload.profile.displayName, "Corey");
     assert.equal(payload.memories[0].text, "you like basketball");
     assert.equal(payload.voiceSettings.presetId, "robotic");
+    assert.equal(payload.avatarSettings.color, "blue");
   });
 });
 

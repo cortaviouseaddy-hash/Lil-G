@@ -34,13 +34,14 @@ export function saveProfile(profile, storage = globalThis.localStorage) {
   return normalizedProfile;
 }
 
-export function createProfileSyncCode({ profile, memories, voiceSettings }, options = {}) {
+export function createProfileSyncCode({ profile, memories, voiceSettings, avatarSettings }, options = {}) {
   const payload = {
     version: PROFILE_SYNC_VERSION,
     createdAt: options.createdAt ?? new Date().toISOString(),
     profile: normalizeProfile(profile),
     memories: Array.isArray(memories) ? memories : [],
-    voiceSettings: voiceSettings ?? {}
+    voiceSettings: voiceSettings ?? {},
+    avatarSettings: avatarSettings ?? {}
   };
 
   return encodePayload(payload);
@@ -59,7 +60,8 @@ export function parseProfileSyncCode(code) {
       createdAt: String(payload.createdAt ?? ""),
       profile: normalizeProfile(payload.profile),
       memories: Array.isArray(payload.memories) ? payload.memories.filter(isValidMemory) : [],
-      voiceSettings: payload.voiceSettings ?? {}
+      voiceSettings: payload.voiceSettings ?? {},
+      avatarSettings: payload.avatarSettings ?? {}
     };
   } catch (error) {
     throw new Error("That profile sync code is not valid.");
