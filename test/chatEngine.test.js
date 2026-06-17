@@ -2,8 +2,20 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { createAssistantMessage, createUserMessage, getLilGResponse } from "../src/chatEngine.js";
+import {
+  extractMemoryFact,
+  formatMemoryList,
+  getRelevantMemoryText,
+  isClearMemoryRequest,
+  isMemoryRecallRequest,
+  loadMemories,
+  MEMORY_STORAGE_KEY,
+  rememberFact,
+  saveMemories
+} from "../src/memory.js";
 import { speakText, stopSpeaking } from "../src/speech.js";
 import { detectWakePhrase, isWakePhrase } from "../src/wakeWord.js";
+import { createWebSearchUrl, detectSearchIntent, formatSearchReply, searchInternet } from "../src/webSearch.js";
 
 describe("getLilGResponse", () => {
   it("answers greetings with an introduction", () => {
@@ -34,6 +46,14 @@ describe("getLilGResponse", () => {
     const response = getLilGResponse("I want this AI to talk back", history);
 
     assert.match(response, /You said: "I want this AI to talk back"/);
+  });
+
+  it("can include relevant remembered facts in normal replies", () => {
+    const response = getLilGResponse("What about basketball?", [], {
+      relevantMemories: ["you like basketball"]
+    });
+
+    assert.match(response, /I remember you like basketball/);
   });
 });
 
@@ -114,3 +134,93 @@ describe("wake word helpers", () => {
     assert.equal(result.command, "tell me a joke");
   });
 });
+
+describe("memory helpers", () => {
+  it("extracts explicit memories and name memories", () => {
+    assert.equal(extractMemoryFact("remember that I like Memphis rap."), "I like Memphis rap");
+    assert.equal(extractMemoryFact("my name is Corey"), "your name is Corey");
+    assert.equal(extractMemoryFact("what is up"), "");
+  });
+
+  it("saves, loads, and formats memories", () => {
+    const storage = createMemoryStorage();
+    const result = rememberFact("you like basketball", [], {
+      id: "memory-1",
+      createdAt: "2026-06-17T00:00:00.000Z"
+    });
+
+    saveMemories(result.memories, storage);
+
+    assert.deepEqual(loadMemories(storage), result.memories);
+    assert.match(formatMemoryList(result.memories), /1\. you like basketball/);
+    assert.equal(storage.getItem(MEMORY_STORAGE_KEY).includes("basketball"), true);
+  });
+
+  it("detects recall and clear requests", () => {
+    assert.equal(isMemoryRecallRequest("what do you remember about me?"), true);
+    assert.equal(isClearMemoryRequest("clear memory"), true);
+  });
+
+  it("finds relevant memory text", () => {
+    const memories = [
+      { id: "memory-1", text: "you like basketball", createdAt: "now" },
+      { id: "memory-2", text: "your dog is named Ace", createdAt: "now" }
+    ];
+
+    assert.deepEqual(getRelevantMemoryText("Let's talk basketball", memories), ["you like basketball"]);
+  });
+});
+
+describe("web search helpers", () => {
+  it("detects search intent and extracts the query", () => {
+    assert.deepEqual(detectSearchIntent("search the internet for Lil G news"), {
+      isSearch: true,
+      query: "Lil G news"
+    });
+    assert.deepEqual(detectSearchIntent("tell me a joke"), {
+      isSearch: false,
+      query: ""
+    });
+  });
+
+  it("fetches and formats sourced search results", async () => {
+    const result = await searchInternet("Lil G", {
+      fetchImpl: async (url) => {
+        assert.match(url, /wikipedia\.org/);
+
+        return {
+          ok: true,
+          async json() {
+            return [
+              "Lil G",
+              ["Lil G"],
+              ["Lil G is a sample result."],
+              ["https://example.com/lil-g"]
+            ];
+          }
+        };
+      }
+    });
+
+    assert.equal(result.query, "Lil G");
+    assert.equal(result.results[0].title, "Lil G");
+    assert.equal(result.webSearchUrl, createWebSearchUrl("Lil G"));
+    assert.match(formatSearchReply(result), /Lil G is a sample result/);
+  });
+});
+
+function createMemoryStorage() {
+  const data = new Map();
+
+  return {
+    getItem(key) {
+      return data.get(key) ?? null;
+    },
+    setItem(key, value) {
+      data.set(key, value);
+    },
+    removeItem(key) {
+      data.delete(key);
+    }
+  };
+}

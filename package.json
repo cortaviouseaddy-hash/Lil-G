@@ -10,6 +10,9 @@
   "keywords": [
     "chat",
     "assistant",
+    "memory",
+    "pwa",
+    "search",
     "speech-synthesis"
   ],
   "license": "MIT"

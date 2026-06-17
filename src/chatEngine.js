@@ -58,15 +58,16 @@ export function createUserMessage(content) {
   };
 }
 
-export function createAssistantMessage(content) {
+export function createAssistantMessage(content, metadata = {}) {
   return {
     role: "assistant",
     content,
+    ...metadata,
     createdAt: new Date().toISOString()
   };
 }
 
-export function getLilGResponse(input, history = []) {
+export function getLilGResponse(input, history = [], context = {}) {
   const message = input.trim();
 
   if (!message) {
@@ -86,10 +87,19 @@ export function getLilGResponse(input, history = []) {
   const previousAssistantReplies = history.filter((entry) => entry.role === "assistant").length;
   const opener = pickFrom(reflectiveOpeners, message.length + previousAssistantReplies);
   const followUp = pickFrom(followUps, message.length + history.length);
+  const memoryContext = formatMemoryContext(context.relevantMemories);
 
-  return `${opener} You said: "${message}". ${followUp}`;
+  return `${opener}${memoryContext} You said: "${message}". ${followUp}`;
 }
 
 function pickFrom(items, seed) {
   return items[Math.abs(seed) % items.length];
+}
+
+function formatMemoryContext(relevantMemories = []) {
+  if (!relevantMemories.length) {
+    return "";
+  }
+
+  return ` I remember ${relevantMemories.join(" and ")}.`;
 }

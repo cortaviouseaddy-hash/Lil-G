@@ -82,7 +82,8 @@ h1 {
   line-height: 1.6;
 }
 
-.install-card {
+.install-card,
+.memory-card {
   margin-top: 1.5rem;
   border: 1px solid rgba(124, 219, 181, 0.22);
   border-radius: 1.25rem;
@@ -90,13 +91,15 @@ h1 {
   padding: 1rem;
 }
 
-.install-card strong {
+.install-card strong,
+.memory-card strong {
   display: block;
   color: var(--accent);
   margin-bottom: 0.4rem;
 }
 
-.install-card p {
+.install-card p,
+.memory-card p {
   color: var(--muted);
   line-height: 1.5;
   margin: 0 0 0.85rem;
@@ -104,6 +107,19 @@ h1 {
 
 .install-card button[hidden] {
   display: none;
+}
+
+.memory-card {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.memory-card ul {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  color: var(--text);
+  padding-left: 1.2rem;
 }
 
 .chat-card {
@@ -183,6 +199,7 @@ h1 {
 }
 
 .message p {
+  white-space: pre-line;
   margin: 0;
   line-height: 1.5;
 }
@@ -194,6 +211,18 @@ h1 {
 
 .message--user strong {
   color: #cbd0ff;
+}
+
+.sources {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.85rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.sources a {
+  color: var(--accent);
+  overflow-wrap: anywhere;
 }
 
 .composer {

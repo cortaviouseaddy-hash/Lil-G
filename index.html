@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Lil-G Talk Back</title>
-    <meta name="description" content="A phone-installable chat assistant that responds, talks back, and listens for Lil-G wake phrases." />
+    <meta name="description" content="A phone-installable chat assistant that responds, talks back, searches the internet, remembers locally, and listens for Lil-G wake phrases." />
     <meta name="theme-color" content="#10131a" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -22,7 +22,8 @@
         <p>
           Type a message, tap the mic, or start wake listening and say
           "Hey Lil-G" if your browser supports speech recognition. Lil-G replies
-          in chat and can speak the answer out loud.
+          in chat, can search the internet, and can remember facts on this
+          device.
         </p>
         <div class="install-card">
           <strong>Install it on your phone</strong>
@@ -31,6 +32,14 @@
             Safari, tap Share, then choose Add to Home Screen.
           </p>
           <button type="button" data-install hidden>Install app</button>
+        </div>
+        <div class="memory-card">
+          <div>
+            <strong>Memory</strong>
+            <p>Say "remember that..." and Lil-G will save it on this device.</p>
+          </div>
+          <button class="secondary-button" type="button" data-clear-memory>Clear memory</button>
+          <ul data-memory-list></ul>
         </div>
       </section>
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = "lil-g-app-v1";
+const CACHE_NAME = "lil-g-app-v2";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -6,7 +6,9 @@ const APP_SHELL = [
   "/manifest.webmanifest",
   "/src/app.js",
   "/src/chatEngine.js",
+  "/src/memory.js",
   "/src/speech.js",
+  "/src/webSearch.js",
   "/src/wakeWord.js",
   "/assets/icons/icon-192.png",
   "/assets/icons/icon-512.png"

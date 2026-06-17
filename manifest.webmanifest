@@ -1,7 +1,7 @@
 {
   "name": "Lil-G Talk Back",
   "short_name": "Lil-G",
-  "description": "A chat assistant that responds, talks back, and listens for Lil-G wake phrases.",
+  "description": "A chat assistant that responds, talks back, searches the internet, remembers locally, and listens for Lil-G wake phrases.",
   "id": "/",
   "start_url": "/",
   "scope": "/",

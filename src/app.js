@@ -1,10 +1,22 @@
 import { createAssistantMessage, createUserMessage, getLilGResponse } from "./chatEngine.js";
+import {
+  clearMemories,
+  extractMemoryFact,
+  formatMemoryList,
+  getRelevantMemoryText,
+  isClearMemoryRequest,
+  isMemoryRecallRequest,
+  loadMemories,
+  rememberFact,
+  saveMemories
+} from "./memory.js";
 import { canSpeak, speakText, stopSpeaking } from "./speech.js";
 import { detectWakePhrase } from "./wakeWord.js";
+import { createWebSearchUrl, detectSearchIntent, formatSearchReply, searchInternet } from "./webSearch.js";
 
 const messages = [
   createAssistantMessage(
-    "What's up? I'm Lil-G. Send me a message, tap the mic, or start wake listening and say \"Hey Lil-G\" to get my attention."
+    "What's up? I'm Lil-G. I can talk back, search the internet, and remember facts on this device. Try \"search the internet for AI news\" or \"remember that I like basketball.\""
   )
 ];
 
@@ -12,6 +24,8 @@ const elements = {
   form: document.querySelector("[data-chat-form]"),
   input: document.querySelector("[data-chat-input]"),
   install: document.querySelector("[data-install]"),
+  memoryList: document.querySelector("[data-memory-list]"),
+  clearMemory: document.querySelector("[data-clear-memory]"),
   messages: document.querySelector("[data-chat-messages]"),
   status: document.querySelector("[data-status]"),
   talkBack: document.querySelector("[data-talk-back]"),
@@ -26,8 +40,10 @@ let isRecognitionActive = false;
 let isWakeListening = false;
 let isAwaitingWakeCommand = false;
 let deferredInstallPrompt;
+let memories = loadMemories();
 
 renderMessages();
+renderMemories();
 updateStatus();
 setupSpeechRecognition();
 setupAppInstall();
@@ -50,7 +66,17 @@ elements.stopSpeech.addEventListener("click", () => {
   setStatus("Speech stopped.");
 });
 
-function sendMessage(rawInput) {
+elements.clearMemory.addEventListener("click", () => {
+  memories = clearMemories();
+  renderMemories();
+  const reply = createAssistantMessage("I cleared my saved memories on this device.");
+  messages.push(reply);
+  renderMessages();
+  speakAssistantReply(reply);
+  setStatus("Memory cleared.");
+});
+
+async function sendMessage(rawInput) {
   const content = rawInput.trim();
 
   if (!content) {
@@ -63,17 +89,97 @@ function sendMessage(rawInput) {
   elements.input.value = "";
   renderMessages();
 
-  const reply = getLilGResponse(content, messages);
-  const assistantMessage = createAssistantMessage(reply);
+  const assistantMessage = await buildAssistantReply(content);
   messages.push(assistantMessage);
   renderMessages();
+  speakAssistantReply(assistantMessage);
+}
 
+async function buildAssistantReply(content) {
+  if (isClearMemoryRequest(content)) {
+    memories = clearMemories();
+    renderMemories();
+    return createAssistantMessage("I forgot the memories saved on this device.");
+  }
+
+  if (isMemoryRecallRequest(content)) {
+    return createAssistantMessage(formatMemoryList(memories));
+  }
+
+  const memoryFact = extractMemoryFact(content);
+
+  if (memoryFact) {
+    const result = rememberFact(memoryFact, memories);
+    memories = result.memories;
+    saveMemories(memories);
+    renderMemories();
+
+    return createAssistantMessage(
+      result.duplicate
+        ? `I already remember that ${result.memory.text}.`
+        : `Got it. I'll remember that ${result.memory.text}.`
+    );
+  }
+
+  const searchIntent = detectSearchIntent(content);
+
+  if (searchIntent.isSearch) {
+    return searchAndReply(searchIntent.query);
+  }
+
+  const relevantMemories = getRelevantMemoryText(content, memories);
+  const reply = getLilGResponse(content, messages, { relevantMemories });
+  return createAssistantMessage(reply);
+}
+
+async function searchAndReply(query) {
+  setStatus(`Searching the internet for "${query}"...`);
+
+  try {
+    const searchResult = await searchInternet(query);
+    return createAssistantMessage(formatSearchReply(searchResult), {
+      sources: createSources(searchResult)
+    });
+  } catch {
+    const webSearchUrl = createWebSearchUrl(query);
+    return createAssistantMessage(
+      `I tried to search the internet for "${query}", but I could not reach the search service from this browser. You can open a web search here: ${webSearchUrl}`,
+      {
+        sources: [
+          {
+            title: `Search the web for ${query}`,
+            url: webSearchUrl
+          }
+        ]
+      }
+    );
+  }
+}
+
+function speakAssistantReply(assistantMessage) {
   if (elements.talkBack.checked) {
-    const didSpeak = speakText(reply);
+    const didSpeak = speakText(assistantMessage.content);
     setStatus(didSpeak ? "Lil-G answered and spoke back." : "Lil-G answered. Speech is not available in this browser.");
   } else {
     setStatus("Lil-G answered in chat.");
   }
+}
+
+function createSources(searchResult) {
+  const resultSources = searchResult.results
+    .filter((result) => result.url)
+    .map((result) => ({
+      title: result.title,
+      url: result.url
+    }));
+
+  return [
+    ...resultSources,
+    {
+      title: `Search the web for ${searchResult.query}`,
+      url: searchResult.webSearchUrl
+    }
+  ];
 }
 
 function acknowledgeWakePhrase() {
@@ -101,11 +207,50 @@ function renderMessages() {
       body.textContent = message.content;
 
       item.append(label, body);
+
+      if (message.sources?.length) {
+        item.append(createSourceList(message.sources));
+      }
+
       return item;
     })
   );
 
   elements.messages.scrollTop = elements.messages.scrollHeight;
+}
+
+function createSourceList(sources) {
+  const list = document.createElement("ul");
+  list.className = "sources";
+
+  for (const source of sources) {
+    const listItem = document.createElement("li");
+    const link = document.createElement("a");
+    link.href = source.url;
+    link.target = "_blank";
+    link.rel = "noreferrer";
+    link.textContent = source.title;
+    listItem.append(link);
+    list.append(listItem);
+  }
+
+  return list;
+}
+
+function renderMemories() {
+  elements.memoryList.replaceChildren(
+    ...memories.map((memory) => {
+      const item = document.createElement("li");
+      item.textContent = memory.text;
+      return item;
+    })
+  );
+
+  if (!memories.length) {
+    const item = document.createElement("li");
+    item.textContent = 'No memories yet. Try: "remember that I like basketball."';
+    elements.memoryList.append(item);
+  }
 }
 
 function setupSpeechRecognition() {

@@ -31,9 +31,11 @@ describe("PWA install structure", () => {
   it("caches the app shell in the service worker", async () => {
     const serviceWorker = await readFile(new URL("../sw.js", import.meta.url), "utf8");
 
-    assert.match(serviceWorker, /const CACHE_NAME = "lil-g-app-v1"/);
+    assert.match(serviceWorker, /const CACHE_NAME = "lil-g-app-v2"/);
     assert.match(serviceWorker, /"\/index\.html"/);
     assert.match(serviceWorker, /"\/manifest\.webmanifest"/);
+    assert.match(serviceWorker, /"\/src\/memory\.js"/);
+    assert.match(serviceWorker, /"\/src\/webSearch\.js"/);
     assert.match(serviceWorker, /"\/assets\/icons\/icon-512\.png"/);
   });
 });
