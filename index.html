@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lil-G Talk Back</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero" aria-labelledby="title">
+        <p class="eyebrow">Lil-G assistant</p>
+        <h1 id="title">Talk to Lil-G and hear it respond.</h1>
+        <p>
+          Type a message or use the mic if your browser supports speech recognition.
+          Lil-G replies in chat and can speak the answer out loud.
+        </p>
+      </section>
+
+      <section class="chat-card" aria-label="Lil-G chat">
+        <div class="toolbar">
+          <label class="toggle">
+            <input type="checkbox" data-talk-back checked />
+            <span>Talk-back</span>
+          </label>
+          <button class="secondary-button" type="button" data-stop-speech>Stop speaking</button>
+        </div>
+
+        <div class="messages" data-chat-messages aria-live="polite"></div>
+
+        <form class="composer" data-chat-form>
+          <button class="mic-button" type="button" data-mic aria-label="Use microphone">Mic</button>
+          <label class="visually-hidden" for="chat-input">Message Lil-G</label>
+          <input
+            id="chat-input"
+            data-chat-input
+            autocomplete="off"
+            placeholder="Ask Lil-G anything..."
+            type="text"
+          />
+          <button type="submit">Send</button>
+        </form>
+
+        <p class="status" data-status role="status"></p>
+      </section>
+    </main>
+
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>

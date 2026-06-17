@@ -1,0 +1,16 @@
+{
+  "name": "lil-g",
+  "version": "0.1.0",
+  "description": "A lightweight browser chat assistant that can respond and talk back.",
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 4173",
+    "test": "node --test"
+  },
+  "keywords": [
+    "chat",
+    "assistant",
+    "speech-synthesis"
+  ],
+  "license": "MIT"
+}
