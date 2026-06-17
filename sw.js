@@ -1,17 +1,17 @@
-const CACHE_NAME = "lil-g-app-v2";
+const CACHE_NAME = "lil-g-app-v3";
 const APP_SHELL = [
-  "/",
-  "/index.html",
-  "/styles.css",
-  "/manifest.webmanifest",
-  "/src/app.js",
-  "/src/chatEngine.js",
-  "/src/memory.js",
-  "/src/speech.js",
-  "/src/webSearch.js",
-  "/src/wakeWord.js",
-  "/assets/icons/icon-192.png",
-  "/assets/icons/icon-512.png"
+  "./",
+  "./index.html",
+  "./styles.css",
+  "./manifest.webmanifest",
+  "./src/app.js",
+  "./src/chatEngine.js",
+  "./src/memory.js",
+  "./src/speech.js",
+  "./src/webSearch.js",
+  "./src/wakeWord.js",
+  "./assets/icons/icon-192.png",
+  "./assets/icons/icon-512.png"
 ];
 
 self.addEventListener("install", (event) => {
@@ -49,7 +49,7 @@ self.addEventListener("fetch", (event) => {
         cachedResponse ||
         fetch(event.request).catch(() => {
           if (event.request.mode === "navigate") {
-            return caches.match("/index.html");
+            return caches.match("./index.html");
           }
 
           throw new Error("Network request failed and no cached response is available.");

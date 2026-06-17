@@ -418,7 +418,7 @@ function registerServiceWorker() {
   }
 
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {
       setStatus("Lil-G works online, but offline app setup is unavailable.");
     });
   });
