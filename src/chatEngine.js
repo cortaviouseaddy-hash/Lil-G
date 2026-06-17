@@ -80,14 +80,15 @@ export function getLilGResponse(input, history = [], context = {}) {
     return matchedRule.response;
   }
 
+  const memoryContext = formatMemoryContext(context.relevantMemories);
+
   if (message.endsWith("?")) {
-    return `Good question. Based on what you said, I'd start by breaking it into one clear next step. ${pickFrom(followUps, message.length)}`;
+    return `Good question.${memoryContext} Based on what you said, I'd start by breaking it into one clear next step. ${pickFrom(followUps, message.length)}`;
   }
 
   const previousAssistantReplies = history.filter((entry) => entry.role === "assistant").length;
   const opener = pickFrom(reflectiveOpeners, message.length + previousAssistantReplies);
   const followUp = pickFrom(followUps, message.length + history.length);
-  const memoryContext = formatMemoryContext(context.relevantMemories);
 
   return `${opener}${memoryContext} You said: "${message}". ${followUp}`;
 }
