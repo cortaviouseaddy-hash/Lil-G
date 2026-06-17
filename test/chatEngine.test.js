@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { detectActionIntent, formatActionReply } from "../src/appActions.js";
 import { createAssistantMessage, createUserMessage, getLilGResponse } from "../src/chatEngine.js";
 import {
   extractMemoryFact,
@@ -15,6 +16,13 @@ import {
   rememberFact,
   saveMemories
 } from "../src/memory.js";
+import {
+  createProfileSyncCode,
+  loadProfile,
+  parseProfileSyncCode,
+  PROFILE_STORAGE_KEY,
+  saveProfile
+} from "../src/profileSync.js";
 import { speakText, stopSpeaking } from "../src/speech.js";
 import {
   createPresetSettings,
@@ -63,6 +71,39 @@ describe("getLilGResponse", () => {
     });
 
     assert.match(response, /I remember you like basketball/);
+  });
+
+  it("supports roleplay requests", () => {
+    const response = getLilGResponse("Can you roleplay as a space pilot?");
+
+    assert.match(response, /roleplay/i);
+    assert.match(response, /stay in character/i);
+  });
+
+  it("explains Discord message limits and pasted-message workflow", () => {
+    const response = getLilGResponse("Can you read my Discord messages and reply?");
+
+    assert.match(response, /paste the messages/i);
+    assert.match(response, /cannot directly read/i);
+  });
+});
+
+describe("app action helpers", () => {
+  it("detects supported app launch requests", () => {
+    const action = detectActionIntent("open Discord");
+
+    assert.equal(action.isAction, true);
+    assert.equal(action.title, "Discord");
+    assert.equal(action.url, "https://discord.com/app");
+    assert.match(formatActionReply(action), /Opening Discord/);
+  });
+
+  it("detects browser search launch requests", () => {
+    const action = detectActionIntent("open browser and search for Lil G");
+
+    assert.equal(action.isAction, true);
+    assert.equal(action.kind, "search");
+    assert.match(action.url, /google\.com\/search/);
   });
 });
 
@@ -230,6 +271,33 @@ describe("memory helpers", () => {
     ];
 
     assert.deepEqual(getRelevantMemoryText("Let's talk basketball", memories), ["you like basketball"]);
+  });
+});
+
+describe("profile sync helpers", () => {
+  it("saves and loads a local profile", () => {
+    const storage = createMemoryStorage();
+    const profile = saveProfile({ displayName: " Corey  G " }, storage);
+
+    assert.deepEqual(profile, { displayName: "Corey G" });
+    assert.deepEqual(loadProfile(storage), profile);
+    assert.equal(storage.getItem(PROFILE_STORAGE_KEY).includes("Corey G"), true);
+  });
+
+  it("round-trips a profile sync code", () => {
+    const code = createProfileSyncCode(
+      {
+        profile: { displayName: "Corey" },
+        memories: [{ id: "memory-1", text: "you like basketball", createdAt: "now" }],
+        voiceSettings: { presetId: "robotic", pitch: 0.7, rate: 0.8 }
+      },
+      { createdAt: "2026-06-17T00:00:00.000Z" }
+    );
+    const payload = parseProfileSyncCode(code);
+
+    assert.equal(payload.profile.displayName, "Corey");
+    assert.equal(payload.memories[0].text, "you like basketball");
+    assert.equal(payload.voiceSettings.presetId, "robotic");
   });
 });
 

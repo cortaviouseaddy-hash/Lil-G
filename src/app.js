@@ -1,4 +1,5 @@
 import { createAssistantMessage, createUserMessage, getLilGResponse } from "./chatEngine.js";
+import { detectActionIntent, formatActionReply, getLaunchTargets } from "./appActions.js";
 import {
   clearMemories,
   extractMemoryFact,
@@ -11,6 +12,12 @@ import {
   rememberFact,
   saveMemories
 } from "./memory.js";
+import {
+  createProfileSyncCode,
+  loadProfile,
+  parseProfileSyncCode,
+  saveProfile
+} from "./profileSync.js";
 import { canSpeak, speakText, stopSpeaking } from "./speech.js";
 import {
   createPresetSettings,
@@ -45,7 +52,18 @@ const elements = {
   voicePitch: document.querySelector("[data-voice-pitch]"),
   voicePitchValue: document.querySelector("[data-voice-pitch-value]"),
   voiceRate: document.querySelector("[data-voice-rate]"),
-  voiceRateValue: document.querySelector("[data-voice-rate-value]")
+  voiceRateValue: document.querySelector("[data-voice-rate-value]"),
+  profileName: document.querySelector("[data-profile-name]"),
+  saveProfile: document.querySelector("[data-save-profile]"),
+  exportProfile: document.querySelector("[data-export-profile]"),
+  copyProfile: document.querySelector("[data-copy-profile]"),
+  profileSyncCode: document.querySelector("[data-profile-sync-code]"),
+  importProfileCode: document.querySelector("[data-import-profile-code]"),
+  importProfile: document.querySelector("[data-import-profile]"),
+  quickLaunch: document.querySelector("[data-quick-launch]"),
+  screenShare: document.querySelector("[data-screen-share]"),
+  screenStop: document.querySelector("[data-screen-stop]"),
+  screenState: document.querySelector("[data-screen-state]")
 };
 
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -56,11 +74,16 @@ let isAwaitingWakeCommand = false;
 let deferredInstallPrompt;
 let memories = loadMemories();
 let voiceSettings = loadVoiceSettings();
+let profile = loadProfile();
 let availableVoices = [];
+let screenShareStream;
 
 renderMessages();
 renderMemories();
 setupVoiceSettings();
+setupProfileSync();
+setupQuickLaunch();
+setupScreenContext();
 updateStatus();
 setupSpeechRecognition();
 setupAppInstall();
@@ -160,6 +183,26 @@ async function buildAssistantReply(content) {
     renderMemories();
   }
 
+  const screenReply = await handleScreenContextRequest(content);
+
+  if (screenReply) {
+    return createAssistantMessage(withSavedMemoryText(screenReply, automaticMemoryResult.added));
+  }
+
+  const actionIntent = detectActionIntent(content);
+
+  if (actionIntent.isAction) {
+    openExternalUrl(actionIntent.url);
+    return createAssistantMessage(withSavedMemoryText(formatActionReply(actionIntent), automaticMemoryResult.added), {
+      sources: [
+        {
+          title: actionIntent.title,
+          url: actionIntent.url
+        }
+      ]
+    });
+  }
+
   const searchIntent = detectSearchIntent(content);
 
   if (searchIntent.isSearch) {
@@ -168,9 +211,8 @@ async function buildAssistantReply(content) {
 
   const relevantMemories = getRelevantMemoryText(content, memories);
   const reply = getLilGResponse(content, messages, { relevantMemories });
-  const savedMemoryText = formatSavedMemoryText(automaticMemoryResult.added);
 
-  return createAssistantMessage(savedMemoryText ? `${reply}\n\n${savedMemoryText}` : reply);
+  return createAssistantMessage(withSavedMemoryText(reply, automaticMemoryResult.added));
 }
 
 async function searchAndReply(query) {
@@ -251,6 +293,12 @@ function formatSavedMemoryText(addedMemories) {
 
   const memoryText = addedMemories.map((memory) => memory.text).join("; ");
   return `I saved that to your local profile memory: ${memoryText}.`;
+}
+
+function withSavedMemoryText(reply, addedMemories) {
+  const savedMemoryText = formatSavedMemoryText(addedMemories);
+
+  return savedMemoryText ? `${reply}\n\n${savedMemoryText}` : reply;
 }
 
 function renderMessages() {
@@ -396,6 +444,97 @@ function setupVoiceSettings() {
   }
 }
 
+function setupProfileSync() {
+  elements.profileName.value = profile.displayName;
+
+  elements.saveProfile.addEventListener("click", () => {
+    profile = saveProfile({
+      displayName: elements.profileName.value
+    });
+    elements.profileName.value = profile.displayName;
+    setStatus(profile.displayName ? `Profile saved for ${profile.displayName}.` : "Profile name cleared.");
+  });
+
+  elements.exportProfile.addEventListener("click", () => {
+    elements.profileSyncCode.value = createProfileSyncCode({
+      profile,
+      memories,
+      voiceSettings
+    });
+    setStatus("Profile sync code created. Paste it on another device to connect this profile.");
+  });
+
+  elements.copyProfile.addEventListener("click", async () => {
+    if (!elements.profileSyncCode.value) {
+      elements.profileSyncCode.value = createProfileSyncCode({
+        profile,
+        memories,
+        voiceSettings
+      });
+    }
+
+    try {
+      await navigator.clipboard.writeText(elements.profileSyncCode.value);
+      setStatus("Profile sync code copied.");
+    } catch {
+      setStatus("Copy is unavailable. Select and copy the sync code manually.");
+    }
+  });
+
+  elements.importProfile.addEventListener("click", () => {
+    try {
+      const payload = parseProfileSyncCode(elements.importProfileCode.value);
+      profile = saveProfile(payload.profile);
+      memories = saveMemories(payload.memories);
+      voiceSettings = saveVoiceSettings(payload.voiceSettings);
+      elements.profileName.value = profile.displayName;
+      elements.importProfileCode.value = "";
+      renderMemories();
+      syncVoiceControls();
+      setStatus("Profile imported on this device.");
+    } catch (error) {
+      setStatus(error.message);
+    }
+  });
+}
+
+function setupQuickLaunch() {
+  elements.quickLaunch.replaceChildren(
+    ...getLaunchTargets().map((target) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "secondary-button quick-launch-button";
+      button.textContent = target.title;
+      button.addEventListener("click", () => {
+        openExternalUrl(target.url);
+        setStatus(`Opening ${target.title}.`);
+      });
+      return button;
+    })
+  );
+}
+
+function setupScreenContext() {
+  if (!canShareScreen()) {
+    elements.screenShare.disabled = true;
+    elements.screenStop.disabled = true;
+    elements.screenState.textContent = "Screen sharing is unavailable in this browser.";
+    return;
+  }
+
+  elements.screenShare.addEventListener("click", async () => {
+    const result = await requestScreenShare();
+    setStatus(result.message);
+  });
+
+  elements.screenStop.addEventListener("click", () => {
+    stopScreenShare();
+    setStatus("Screen sharing stopped.");
+  });
+
+  updateScreenState();
+}
+
 function renderVoicePresetButtons() {
   elements.voicePresets.replaceChildren(
     ...voicePresets.map((preset) => {
@@ -483,6 +622,90 @@ function handleVoiceTranscript(transcript) {
   }
 
   sendMessage(transcript);
+}
+
+async function handleScreenContextRequest(content) {
+  if (!isScreenContextRequest(content)) {
+    return "";
+  }
+
+  const result = await requestScreenShare();
+
+  if (!result.active) {
+    return result.message;
+  }
+
+  return `${result.message} I can keep track that you are sharing your screen, but this browser-only version does not run visual OCR or image understanding yet. Tell me what app or text you want help with, or paste the text, and I will respond using that context.`;
+}
+
+async function requestScreenShare() {
+  if (screenShareStream?.active) {
+    return {
+      active: true,
+      message: "Screen sharing is already active."
+    };
+  }
+
+  if (!canShareScreen()) {
+    return {
+      active: false,
+      message: "This browser does not support screen sharing for Lil-G."
+    };
+  }
+
+  try {
+    screenShareStream = await navigator.mediaDevices.getDisplayMedia({
+      video: true,
+      audio: false
+    });
+
+    const [track] = screenShareStream.getVideoTracks();
+    track?.addEventListener?.("ended", () => {
+      screenShareStream = undefined;
+      updateScreenState();
+    });
+    updateScreenState();
+
+    return {
+      active: true,
+      message: "Screen sharing is active."
+    };
+  } catch {
+    updateScreenState();
+    return {
+      active: false,
+      message: "Screen sharing was canceled or blocked."
+    };
+  }
+}
+
+function stopScreenShare() {
+  for (const track of screenShareStream?.getTracks() ?? []) {
+    track.stop();
+  }
+
+  screenShareStream = undefined;
+  updateScreenState();
+}
+
+function updateScreenState() {
+  const isSharing = Boolean(screenShareStream?.active);
+  elements.screenStop.disabled = !isSharing;
+  elements.screenState.textContent = isSharing
+    ? "Screen sharing is on. Full visual understanding needs a future OCR/vision service."
+    : "Screen sharing is off.";
+}
+
+function canShareScreen() {
+  return typeof navigator.mediaDevices?.getDisplayMedia === "function";
+}
+
+function isScreenContextRequest(content) {
+  return /\b(look at|see|watch|read|scan)\b.*\b(my\s+)?screen\b|\bscreen\b.*\b(context|share|sharing)\b/i.test(content);
+}
+
+function openExternalUrl(url) {
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 function startRecognition(options = {}) {

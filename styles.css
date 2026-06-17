@@ -27,7 +27,8 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -201,6 +202,57 @@ h1 {
   margin: 0.35rem 0 0;
 }
 
+.profile-sync-grid,
+.quick-launch-grid,
+.screen-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.8rem;
+}
+
+.profile-sync-grid label,
+.text-area-control {
+  display: grid;
+  gap: 0.4rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.profile-sync-grid label {
+  flex: 1 1 12rem;
+}
+
+.profile-sync-grid input,
+.text-area-control textarea {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.9rem;
+  color: var(--text);
+  background: #0f131d;
+  outline: none;
+  padding: 0.75rem 0.9rem;
+}
+
+.profile-sync-grid input:focus,
+.text-area-control textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 0.2rem rgba(124, 219, 181, 0.16);
+}
+
+.text-area-control {
+  margin-top: 0.8rem;
+}
+
+.text-area-control textarea {
+  min-height: 4.8rem;
+  resize: vertical;
+}
+
+.quick-launch-button {
+  flex: 1 1 8rem;
+}
+
 .voice-preset-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -249,6 +301,11 @@ h1 {
 
 .device-access-note strong {
   color: var(--accent);
+}
+
+.inline-status {
+  color: var(--muted);
+  margin: 0.7rem 0 0;
 }
 
 .messages {
