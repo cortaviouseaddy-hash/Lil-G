@@ -1,6 +1,14 @@
 import { createAssistantMessage, createUserMessage, getLilGResponse } from "./chatEngine.js";
 import { detectActionIntent, formatActionReply, getLaunchTargets } from "./appActions.js";
 import {
+  applyAvatarUpdate,
+  avatarOptions,
+  detectAvatarCommand,
+  formatAvatarSummary,
+  loadAvatarSettings,
+  saveAvatarSettings
+} from "./avatarSettings.js";
+import {
   clearMemories,
   extractMemoryFact,
   formatMemoryList,
@@ -63,7 +71,13 @@ const elements = {
   quickLaunch: document.querySelector("[data-quick-launch]"),
   screenShare: document.querySelector("[data-screen-share]"),
   screenStop: document.querySelector("[data-screen-stop]"),
-  screenState: document.querySelector("[data-screen-state]")
+  screenState: document.querySelector("[data-screen-state]"),
+  startup: document.querySelector("[data-startup-screen]"),
+  startCustomizing: document.querySelector("[data-start-customizing]"),
+  skipStartup: document.querySelector("[data-skip-startup]"),
+  avatarFigure: document.querySelector("[data-avatar-figure]"),
+  avatarSummary: document.querySelector("[data-avatar-summary]"),
+  avatarOptionGroups: document.querySelectorAll("[data-avatar-options]")
 };
 
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -75,11 +89,14 @@ let deferredInstallPrompt;
 let memories = loadMemories();
 let voiceSettings = loadVoiceSettings();
 let profile = loadProfile();
+let avatarSettings = loadAvatarSettings();
 let availableVoices = [];
 let screenShareStream;
 
+setupStartupIntro();
 renderMessages();
 renderMemories();
+setupAvatarCustomization();
 setupVoiceSettings();
 setupProfileSync();
 setupQuickLaunch();
@@ -150,6 +167,18 @@ async function sendMessage(rawInput) {
 }
 
 async function buildAssistantReply(content) {
+  const avatarCommand = detectAvatarCommand(content, avatarSettings);
+
+  if (avatarCommand.isAvatarCommand) {
+    avatarSettings = saveAvatarSettings(avatarCommand.settings);
+    renderAvatar();
+    return createAssistantMessage(
+      `Done. I updated my avatar ${formatChangedAvatarKeys(avatarCommand.changedKeys)}. Now I look like a ${formatAvatarSummary(
+        avatarSettings
+      )}.`
+    );
+  }
+
   if (isClearMemoryRequest(content)) {
     memories = clearMemories();
     renderMemories();
@@ -459,7 +488,8 @@ function setupProfileSync() {
     elements.profileSyncCode.value = createProfileSyncCode({
       profile,
       memories,
-      voiceSettings
+      voiceSettings,
+      avatarSettings
     });
     setStatus("Profile sync code created. Paste it on another device to connect this profile.");
   });
@@ -469,7 +499,8 @@ function setupProfileSync() {
       elements.profileSyncCode.value = createProfileSyncCode({
         profile,
         memories,
-        voiceSettings
+        voiceSettings,
+        avatarSettings
       });
     }
 
@@ -487,15 +518,82 @@ function setupProfileSync() {
       profile = saveProfile(payload.profile);
       memories = saveMemories(payload.memories);
       voiceSettings = saveVoiceSettings(payload.voiceSettings);
+      avatarSettings = saveAvatarSettings(payload.avatarSettings);
       elements.profileName.value = profile.displayName;
       elements.importProfileCode.value = "";
       renderMemories();
+      renderAvatar();
       syncVoiceControls();
       setStatus("Profile imported on this device.");
     } catch (error) {
       setStatus(error.message);
     }
   });
+}
+
+function setupStartupIntro() {
+  document.body.classList.add("has-startup-open");
+
+  elements.startCustomizing.addEventListener("click", () => {
+    hideStartupIntro();
+    document.querySelector("#avatar-customizer")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setStatus("Let's customize your assistant avatar.");
+  });
+
+  elements.skipStartup.addEventListener("click", () => {
+    hideStartupIntro();
+    setStatus("Lil-G is ready.");
+  });
+}
+
+function hideStartupIntro() {
+  elements.startup.classList.add("is-hidden");
+  document.body.classList.remove("has-startup-open");
+}
+
+function setupAvatarCustomization() {
+  for (const group of elements.avatarOptionGroups) {
+    const key = group.dataset.avatarOptions;
+    group.replaceChildren(
+      ...avatarOptions[key].map((option) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "secondary-button avatar-option-button";
+        button.dataset.avatarOption = option;
+        button.textContent = formatAvatarOptionLabel(option);
+        button.addEventListener("click", () => {
+          avatarSettings = saveAvatarSettings(applyAvatarUpdate(avatarSettings, { [key]: option }));
+          renderAvatar();
+          setStatus(`Avatar ${formatAvatarOptionLabel(key)} set to ${formatAvatarOptionLabel(option)}.`);
+        });
+        return button;
+      })
+    );
+  }
+
+  renderAvatar();
+}
+
+function renderAvatar() {
+  const avatar = avatarSettings;
+  elements.avatarFigure.dataset.identity = avatar.identity;
+  elements.avatarFigure.dataset.color = avatar.color;
+  elements.avatarFigure.dataset.shape = avatar.shape;
+  elements.avatarFigure.dataset.hair = avatar.hair;
+  elements.avatarFigure.dataset.face = avatar.face;
+  elements.avatarFigure.dataset.body = avatar.body;
+  elements.avatarFigure.dataset.clothes = avatar.clothes;
+  elements.avatarSummary.textContent = `Current avatar: ${formatAvatarSummary(avatar)}.`;
+
+  for (const group of elements.avatarOptionGroups) {
+    const key = group.dataset.avatarOptions;
+
+    for (const button of group.querySelectorAll("[data-avatar-option]")) {
+      const isSelected = button.dataset.avatarOption === avatar[key];
+      button.classList.toggle("is-selected", isSelected);
+      button.setAttribute("aria-pressed", String(isSelected));
+    }
+  }
 }
 
 function setupQuickLaunch() {
@@ -512,6 +610,18 @@ function setupQuickLaunch() {
       return button;
     })
   );
+}
+
+function formatChangedAvatarKeys(keys) {
+  if (keys.length === 1) {
+    return keys[0];
+  }
+
+  return keys.slice(0, -1).join(", ") + ` and ${keys.at(-1)}`;
+}
+
+function formatAvatarOptionLabel(value) {
+  return value.replace(/-/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function setupScreenContext() {

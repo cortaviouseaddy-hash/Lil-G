@@ -15,6 +15,23 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
+    <section class="startup-screen" data-startup-screen aria-label="Lil-G startup intro">
+      <p class="startup-credit">Made by GFerryGoon</p>
+      <div class="startup-orb" aria-hidden="true"></div>
+      <div class="startup-copy">
+        <strong>Hello, I'm your personal help assistant.</strong>
+        <p>
+          I can talk back, search the internet, remember local profile facts,
+          open supported web apps, help with roleplay, and more. But first,
+          let's customize me.
+        </p>
+      </div>
+      <div class="startup-actions">
+        <button type="button" data-start-customizing>Customize me</button>
+        <button class="secondary-button" type="button" data-skip-startup>Enter Lil-G</button>
+      </div>
+    </section>
+
     <main class="app-shell">
       <section class="hero" aria-labelledby="title">
         <p class="eyebrow">Lil-G assistant</p>
@@ -33,6 +50,60 @@
             Screen.
           </p>
           <button type="button" data-install hidden>Install app</button>
+        </div>
+        <div class="avatar-card" id="avatar-customizer">
+          <div>
+            <strong>Customize your assistant avatar</strong>
+            <p>
+              Build a smooth, non-explicit AI avatar from colors and shapes.
+              Choose a label, color, shape, hair, face, and body style.
+            </p>
+          </div>
+
+          <div class="avatar-preview" data-avatar-preview aria-label="Assistant avatar preview">
+            <div class="avatar-figure" data-avatar-figure>
+              <div class="avatar-hair"></div>
+              <div class="avatar-head">
+                <span class="avatar-eye avatar-eye--left"></span>
+                <span class="avatar-eye avatar-eye--right"></span>
+                <span class="avatar-mouth"></span>
+              </div>
+              <div class="avatar-torso"></div>
+            </div>
+          </div>
+
+          <p class="avatar-summary" data-avatar-summary></p>
+
+          <div class="avatar-customizer-grid">
+            <div class="avatar-option-group">
+              <span>Am I a boy or girl?</span>
+              <div class="avatar-button-grid" data-avatar-options="identity"></div>
+            </div>
+            <div class="avatar-option-group">
+              <span>Pick a color</span>
+              <div class="avatar-button-grid" data-avatar-options="color"></div>
+            </div>
+            <div class="avatar-option-group">
+              <span>Pick a shape</span>
+              <div class="avatar-button-grid" data-avatar-options="shape"></div>
+            </div>
+            <div class="avatar-option-group">
+              <span>Hair style</span>
+              <div class="avatar-button-grid" data-avatar-options="hair"></div>
+            </div>
+            <div class="avatar-option-group">
+              <span>Face style</span>
+              <div class="avatar-button-grid" data-avatar-options="face"></div>
+            </div>
+            <div class="avatar-option-group">
+              <span>Body shape</span>
+              <div class="avatar-button-grid" data-avatar-options="body"></div>
+            </div>
+            <div class="avatar-option-group">
+              <span>Clothes</span>
+              <div class="avatar-button-grid" data-avatar-options="clothes"></div>
+            </div>
+          </div>
         </div>
         <div class="memory-card">
           <div>
@@ -68,7 +139,7 @@
               <p>
                 Save a local profile name, export a sync code, and import that
                 code on another installed copy so Lil-G recognizes the same
-                memories and voice settings there too.
+                memories, voice settings, and avatar settings there too.
               </p>
               <div class="profile-sync-grid">
                 <label>

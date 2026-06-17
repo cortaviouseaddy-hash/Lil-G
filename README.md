@@ -5,6 +5,8 @@ Lil-G is a lightweight browser chat assistant that can respond in text and talk 
 ## Features
 
 - Chat UI for sending messages to Lil-G.
+- Startup intro with a flashing "Made by GFerryGoon" credit and white orb assistant greeting.
+- Avatar customization for identity label, color, shape, hair, face, body style, and clothes.
 - Built-in response engine so Lil-G can answer immediately without an API key.
 - Internet search commands for phrases like "search the internet for..." or "look up...".
 - Device-local memory: say "remember that..." or share profile facts like your name, favorite things, interests, or speech style, and Lil-G can recall them later on the same device.
@@ -49,6 +51,24 @@ Memories are saved in the browser's local storage on the current device. They do
 
 Lil-G also saves some profile-style memories automatically when you say things like `my name is Corey`, `my favorite music is jazz`, `I love basketball`, or `I talk about cars a lot`.
 
+## Startup and avatar customization
+
+On startup, Lil-G shows a flashing **Made by GFerryGoon** credit, becomes a white orb, introduces itself as your personal help assistant, and points you toward customization.
+
+The avatar builder lets you choose:
+
+- Identity label: boy, girl, custom, or no label
+- Color
+- Shape
+- Hair style
+- Face style
+- Body style
+- Clothes
+
+You can also customize through chat or voice commands such as `change my avatar color to purple`, `set my avatar hair to curls`, `change my avatar clothes to hoodie`, or `make my avatar a boy`.
+
+The avatar is intentionally smooth, stylized, and non-explicit. It uses abstract shapes only and does not render nudity, genitals, or sexual details.
+
 ## Profile sync
 
 Open **Voice and device settings**, save a profile name, then choose **Export sync code**. Paste that code into another installed copy with **Import profile** to copy over:
@@ -56,6 +76,7 @@ Open **Voice and device settings**, save a profile name, then choose **Export sy
 - Profile name
 - Local memories
 - Voice preset, pitch, and speed settings
+- Avatar settings
 
 This behaves like a lightweight account connection, but it is manual and local. A real automatic account system would need a backend service, sign-in, encrypted storage, and sync conflict handling.
 
