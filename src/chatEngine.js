@@ -51,20 +51,6 @@ const normalizers = [
   }
 ];
 
-const reflectiveOpeners = [
-  "I hear you.",
-  "That's interesting.",
-  "I'm thinking about that with you.",
-  "Let's work through that."
-];
-
-const followUps = [
-  "What would you like to happen next?",
-  "Can you tell me a little more?",
-  "What part should we focus on first?",
-  "Do you want advice, ideas, or just someone to listen?"
-];
-
 const replyLengths = ["short", "medium", "long"];
 
 export function createUserMessage(content) {
@@ -115,23 +101,7 @@ export function getLilGResponse(input, history = [], context = {}) {
     return answerOpenQuestion(message, memoryContext, replyLength);
   }
 
-  const previousAssistantReplies = history.filter((entry) => entry.role === "assistant").length;
-  const opener = pickFrom(reflectiveOpeners, message.length + previousAssistantReplies);
-  const followUp = pickFrom(followUps, message.length + history.length);
-
-  if (replyLength === "short") {
-    return `${opener}${memoryContext} ${followUp}`;
-  }
-
-  if (replyLength === "long") {
-    return `${opener}${memoryContext} You said: "${message}". Here is what I am hearing: there is something specific behind that message, and the best next move is to name the goal, the obstacle, and what you want from me. I can listen, help you make a plan, draft something, or look online if this needs facts. ${followUp}`;
-  }
-
-  return `${opener}${memoryContext} You said: "${message}". ${followUp}`;
-}
-
-function pickFrom(items, seed) {
-  return items[Math.abs(seed) % items.length];
+  return answerStatement(message, memoryContext, replyLength, history);
 }
 
 function answerByIntent(message, memoryContext, replyLength) {
@@ -254,16 +224,190 @@ Once I have those pieces, I can make a first draft and then revise it with you.`
 }
 
 function answerOpenQuestion(message, memoryContext, replyLength) {
+  const topicPlan = createTopicPlan(message, memoryContext);
+  const topic = topicPlan.topic;
+
+  if (/^(can|could|would)\s+you\b/i.test(message)) {
+    return formatLengthResponse(
+      replyLength,
+      `Yes - I can help with ${topic}.${memoryContext} ${topicPlan.shortAction}`,
+      `Yes - I can help with ${topic}.${memoryContext} ${topicPlan.mediumAction}`,
+      `Yes - I can help with ${topic}.${memoryContext}
+1. ${topicPlan.firstStep}
+2. ${topicPlan.secondStep}
+3. ${topicPlan.thirdStep}
+
+If you want facts, say "look online" and I will pull sources for ${topic}.`
+    );
+  }
+
+  if (/^(should|would)\s+i\b/i.test(message)) {
+    return formatLengthResponse(
+      replyLength,
+      `For ${topic}, choose the option with the lowest downside and the clearest next step.${memoryContext}`,
+      `For ${topic}, I would compare the upside, downside, and what you can test first.${memoryContext} Pick the move that gives you useful information without locking you into a bad trade.`,
+      `For ${topic}, I would decide it this way:${memoryContext}
+1. Name the real goal.
+2. List the downside of each option.
+3. Pick the smallest test that gives you proof.
+4. If two choices are close, take the one that is easier to reverse.`
+    );
+  }
+
   return formatLengthResponse(
     replyLength,
-    `Good question.${memoryContext} Tell me any details you have, and I will help answer or go online if it needs facts.`,
-    `Good question.${memoryContext} Here's how I would answer it: separate what we know from what we need to find out, then take the next useful step.
+    `${topicPlan.shortLead}${memoryContext} ${topicPlan.shortAction}`,
+    `${topicPlan.mediumLead}${memoryContext} ${topicPlan.mediumAction}`,
+    `${topicPlan.longLead}${memoryContext}
+1. ${topicPlan.firstStep}
+2. ${topicPlan.secondStep}
+3. ${topicPlan.thirdStep}
 
-For your question, the next useful step is to share any details, constraints, or examples you already have. If it is a factual question, ask me to search or phrase it like "who/what/when/where is..." and I can look for a sourced answer.`,
-    `Good question.${memoryContext} I can handle this two ways: if it needs up-to-date facts, I can go online and bring back a sourced answer; if it is about your situation, we can reason it through together.
-
-The best next step is to give me one or two details: what you already know, what you are trying to do, and where you are stuck. Then I can answer directly instead of giving a generic response.`
+If this needs verified facts, say "look online" and I will search ${topic}.`
   );
+}
+
+function answerStatement(message, memoryContext, replyLength, history) {
+  const topicPlan = createTopicPlan(message, memoryContext, history);
+
+  return formatLengthResponse(
+    replyLength,
+    `${topicPlan.shortLead}${memoryContext} ${topicPlan.shortAction}`,
+    `${topicPlan.mediumLead}${memoryContext} ${topicPlan.mediumAction}`,
+    `${topicPlan.longLead}${memoryContext}
+1. ${topicPlan.firstStep}
+2. ${topicPlan.secondStep}
+3. ${topicPlan.thirdStep}
+
+Say "look online" if you want sources for ${topicPlan.topic}.`
+  );
+}
+
+function createTopicPlan(message, memoryContext = "", history = []) {
+  const topic = extractConversationTopic(message);
+  const hasContext = Boolean(memoryContext || history.length);
+
+  if (isShortAcknowledgement(message)) {
+    return {
+      topic: "your last message",
+      shortLead: "I got you.",
+      mediumLead: "I got you.",
+      longLead: "I got you.",
+      shortAction: "Send the actual thing you want answered, opened, written, remembered, or searched.",
+      mediumAction:
+        "Send the actual thing you want answered, opened, written, remembered, or searched, and I will act on that instead of filling space.",
+      firstStep: "Use a direct command like \"search...\", \"remember...\", \"write...\", or \"open...\".",
+      secondStep: "Add the subject after the command.",
+      thirdStep: "I will answer in that lane instead of guessing what you meant."
+    };
+  }
+
+  if (/\b(ai|assistant|bot|chatbot|lil-g)\b/i.test(message) && /\b(talk|talk-back|speak|voice|reply|respond|answer)\b/i.test(message)) {
+    return {
+      topic: "AI talk-back",
+      shortLead: "For AI talk-back:",
+      mediumLead: "For AI talk-back, the app should feel like a quick voice buddy instead of a wall of text.",
+      longLead: "For AI talk-back, the strongest version is fast, interruptible, and a little personal.",
+      shortAction: "keep replies speakable, make the voice controls obvious, and always let the user stop speech instantly.",
+      mediumAction:
+        "Use short spoken replies by default, keep longer detail in chat, make the voice style easy to change, and keep a stop-speaking control visible.",
+      firstStep: "Use a short spoken summary first.",
+      secondStep: "Put extra detail in the chat bubble so the voice does not ramble.",
+      thirdStep: "Keep voice, speed, and stop controls one tap away."
+    };
+  }
+
+  if (/\b(basketball|football|soccer|baseball|sport|sports|training|workout)\b/i.test(message)) {
+    return {
+      topic,
+      shortLead: `For ${topic}:`,
+      mediumLead: `For ${topic}, I would treat it like practice, not just talk.`,
+      longLead: `For ${topic}, the useful answer depends on skill, consistency, and feedback.`,
+      shortAction: "pick one skill, drill it for a short burst, then test it under pressure.",
+      mediumAction:
+        "Pick one skill, drill it with a timer, then test it in a real situation so you know whether it actually improved.",
+      firstStep: "Choose one skill instead of trying to fix everything.",
+      secondStep: "Run a repeatable drill so progress is visible.",
+      thirdStep: "Test it in a real game or pressure situation."
+    };
+  }
+
+  if (/\b(music|song|beat|rap|jazz|lyrics|melody|artist)\b/i.test(message)) {
+    return {
+      topic,
+      shortLead: `For ${topic}:`,
+      mediumLead: `For ${topic}, start with the feeling first, then build the sound around it.`,
+      longLead: `For ${topic}, the best answer usually comes from matching mood, rhythm, and one memorable line.`,
+      shortAction: "choose the mood, set the rhythm, then make one line or hook strong enough to remember.",
+      mediumAction:
+        "Choose the mood, pick the rhythm, write one strong hook or line, then build everything else around that center.",
+      firstStep: "Name the mood: hype, dark, funny, smooth, angry, calm, or emotional.",
+      secondStep: "Pick the rhythm or reference style.",
+      thirdStep: "Build one hook, lyric, or beat idea that carries the whole thing."
+    };
+  }
+
+  if (/\b(school|homework|study|learn|class|test|exam|grade)\b/i.test(message)) {
+    return {
+      topic,
+      shortLead: `For ${topic}:`,
+      mediumLead: `For ${topic}, the fastest path is active practice instead of rereading.`,
+      longLead: `For ${topic}, you want recall, examples, and quick correction loops.`,
+      shortAction: "turn it into practice questions, answer without looking, then fix the misses.",
+      mediumAction:
+        "Turn the material into practice questions, answer from memory, check the misses, and repeat the weak spots first.",
+      firstStep: "Make 5-10 practice questions from the material.",
+      secondStep: "Answer without looking at notes.",
+      thirdStep: "Redo only the missed parts until they stick."
+    };
+  }
+
+  if (/\b(job|work|money|cash|business|sell|sales|income)\b/i.test(message)) {
+    return {
+      topic,
+      shortLead: `For ${topic}:`,
+      mediumLead: `For ${topic}, focus on the move that creates value or saves money first.`,
+      longLead: `For ${topic}, I would separate quick wins from long-term moves.`,
+      shortAction: "name the goal, list what you can do today, then pick the action closest to money or proof.",
+      mediumAction:
+        "Name the goal, list the actions you can take today, then pick the one closest to money, proof, or a real person saying yes.",
+      firstStep: "Define the money or work outcome.",
+      secondStep: "List actions that can happen today.",
+      thirdStep: "Pick the action closest to a buyer, boss, customer, or proof."
+    };
+  }
+
+  if (/\b(body|health|medical|doctor|pain|sex|penis|dick|cock|size)\b/i.test(message)) {
+    return {
+      topic,
+      shortLead: `For ${topic}:`,
+      mediumLead: `For ${topic}, I do not want to guess on health or body facts.`,
+      longLead: `For ${topic}, the safest answer is sourced and calm, not random internet confidence.`,
+      shortAction: "use online sources for the facts, and talk to a clinician for pain, symptoms, or worries.",
+      mediumAction:
+        "Use online sources for basic facts, compare a few reliable medical references, and talk to a clinician for pain, symptoms, or serious worry.",
+      firstStep: "Search reliable medical sources for the fact.",
+      secondStep: "Ignore shame-based or joke answers.",
+      thirdStep: "Use a clinician for symptoms, pain, or anything that feels serious."
+    };
+  }
+
+  const lead = hasContext
+    ? `On ${topic}, plus what I remember from this chat:`
+    : `On ${topic}:`;
+
+  return {
+    topic,
+    shortLead: lead,
+    mediumLead: lead,
+    longLead: lead,
+    shortAction: "pick the exact lane: answer, plan, write, remember, open, or search.",
+    mediumAction:
+      "Pick the exact lane - answer, plan, write, remember, open, or search - and I will respond in that mode with the subject already in view.",
+    firstStep: `Decide whether ${topic} needs an answer, a plan, a draft, memory, an app launch, or an online search.`,
+    secondStep: "Use that command directly so I know the job.",
+    thirdStep: "I will stay on that subject instead of filling the chat with vague follow-ups."
+  };
 }
 
 function answerMathQuestion(message, memoryContext, replyLength) {
@@ -373,6 +517,33 @@ function isExplanationRequest(message) {
 
 function isCreationRequest(message) {
   return /\b(write|draft|make|create|build|design|plan|brainstorm)\b/i.test(message);
+}
+
+function isShortAcknowledgement(message) {
+  return /^(ok|okay|k|yeah|yes|no|nah|cool|bet|alright|sure|fine)\s*[.!?]*$/i.test(message.trim());
+}
+
+function extractConversationTopic(message) {
+  const cleaned = message
+    .replace(/[?!.]+$/g, "")
+    .replace(/^\s*(what about|how about)\s+/i, "")
+    .replace(/^\s*(can|could|would)\s+you\s+/i, "")
+    .replace(/^\s*(should|would)\s+i\s+/i, "")
+    .replace(/^\s*(how|why|what|who|where|when)\s+(?:do|does|did|can|could|should|would|is|are|was|were)\s+(?:i|you|we|they|it)?\s*/i, "")
+    .replace(/^\s*(?:i\s+)?(?:want|need|like|love|think|feel|am|i'm|im)\s+(?:to\s+)?/i, "")
+    .replace(/^\s*(?:this|that|the|a|an)\s+/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (/\b(ai|assistant|bot|chatbot|lil-g)\b/i.test(message) && /\b(talk|talk-back|speak|voice|reply|respond|answer)\b/i.test(message)) {
+    return "AI talk-back";
+  }
+
+  if (!cleaned || cleaned.length < 3) {
+    return "that";
+  }
+
+  return cleaned.length > 48 ? `${cleaned.slice(0, 45).trim()}...` : cleaned;
 }
 
 function extractTopic(message) {

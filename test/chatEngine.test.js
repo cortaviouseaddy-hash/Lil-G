@@ -96,7 +96,7 @@ describe("getLilGResponse", () => {
     assert.match(response, /exact error/i);
   });
 
-  it("uses conversation history for reflective replies", () => {
+  it("uses topic-specific fallback replies instead of generic reflection", () => {
     const history = [
       createUserMessage("hello"),
       createAssistantMessage("Hey, I'm Lil-G."),
@@ -105,7 +105,10 @@ describe("getLilGResponse", () => {
 
     const response = getLilGResponse("I want this AI to talk back", history);
 
-    assert.match(response, /You said: "I want this AI to talk back"/);
+    assert.match(response, /AI talk-back/i);
+    assert.match(response, /voice controls|spoken replies/i);
+    assert.doesNotMatch(response, /You said/);
+    assert.doesNotMatch(response, /That's interesting/);
   });
 
   it("can include relevant remembered facts in normal replies", () => {
@@ -114,6 +117,20 @@ describe("getLilGResponse", () => {
     });
 
     assert.match(response, /I remember you like basketball/);
+    assert.match(response, /drill|practice|skill/i);
+    assert.doesNotMatch(response, /Good question/);
+  });
+
+  it("avoids old stock fallback phrases", () => {
+    const responses = [
+      getLilGResponse("I want this AI to talk back"),
+      getLilGResponse("What about basketball?"),
+      getLilGResponse("ok")
+    ];
+
+    for (const response of responses) {
+      assert.doesNotMatch(response, /Good question|That's interesting|I'm thinking|You said|Can you tell me|Do you want advice|What would you like/i);
+    }
   });
 
   it("supports roleplay requests", () => {
