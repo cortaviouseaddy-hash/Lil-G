@@ -255,7 +255,8 @@ function isTroubleshootingRequest(message) {
 }
 
 function isDecisionRequest(message) {
-  return /\b(choose|decide|which one|which should|better|best option|should i)\b/i.test(message);
+  return /\b(choose|decide|which one|which should|better|best option)\b/i.test(message)
+    || /\bshould i\s+(pick|buy|use|choose|switch|keep|stop|start over)\b/i.test(message);
 }
 
 function isHowToRequest(message) {
