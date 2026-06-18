@@ -69,6 +69,19 @@ describe("getLilGResponse", () => {
     assert.match(response, /step-by-step/i);
   });
 
+  it("can shorten or lengthen conversational replies", () => {
+    const shortResponse = getLilGResponse("How can I learn faster?", [], {
+      replyLength: "short"
+    });
+    const longResponse = getLilGResponse("How can I learn faster?", [], {
+      replyLength: "long"
+    });
+
+    assert.equal(shortResponse.includes("\n1."), false);
+    assert.match(longResponse, /go online/i);
+    assert.equal(longResponse.length > shortResponse.length, true);
+  });
+
   it("solves simple arithmetic questions", () => {
     const response = getLilGResponse("What is 12 plus 8 divided by 2?");
 
@@ -366,6 +379,7 @@ describe("profile sync helpers", () => {
         profile: { displayName: "Corey" },
         memories: [{ id: "memory-1", text: "you like basketball", createdAt: "now" }],
         voiceSettings: { presetId: "robotic", pitch: 0.7, rate: 0.8 },
+        replySettings: { length: "long" },
         avatarSettings: { identity: "boy", color: "blue", shape: "diamond", hair: "short" }
       },
       { createdAt: "2026-06-17T00:00:00.000Z" }
@@ -375,6 +389,7 @@ describe("profile sync helpers", () => {
     assert.equal(payload.profile.displayName, "Corey");
     assert.equal(payload.memories[0].text, "you like basketball");
     assert.equal(payload.voiceSettings.presetId, "robotic");
+    assert.equal(payload.replySettings.length, "long");
     assert.equal(payload.avatarSettings.color, "blue");
   });
 });
@@ -395,6 +410,14 @@ describe("web search helpers", () => {
     assert.deepEqual(detectKnowledgeQuestion("What is photosynthesis?"), {
       isSearch: true,
       query: "photosynthesis"
+    });
+    assert.deepEqual(detectKnowledgeQuestion("Tell me about black holes"), {
+      isSearch: true,
+      query: "black holes"
+    });
+    assert.deepEqual(detectKnowledgeQuestion("latest news about NASA"), {
+      isSearch: true,
+      query: "NASA"
     });
     assert.deepEqual(detectKnowledgeQuestion("How can I fix my app?"), {
       isSearch: false,
@@ -425,6 +448,8 @@ describe("web search helpers", () => {
     assert.equal(result.results[0].title, "Lil G");
     assert.equal(result.webSearchUrl, createWebSearchUrl("Lil G"));
     assert.match(formatSearchReply(result), /Lil G is a sample result/);
+    assert.match(formatSearchReply(result, { automatic: true, replyLength: "short" }), /went online to answer/);
+    assert.match(formatSearchReply(result, { replyLength: "long" }), /verify details/);
   });
 });
 

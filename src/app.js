@@ -44,6 +44,11 @@ import {
   searchInternet
 } from "./webSearch.js";
 
+const REPLY_SETTINGS_STORAGE_KEY = "lil-g-reply-settings-v1";
+const defaultReplySettings = {
+  length: "medium"
+};
+
 const messages = [
   createAssistantMessage(
     "What's up? I'm Lil-G. I can talk back, search the internet, and remember facts on this device. Try \"search the internet for AI news\" or \"remember that I like basketball.\""
@@ -67,6 +72,7 @@ const elements = {
   voicePitchValue: document.querySelector("[data-voice-pitch-value]"),
   voiceRate: document.querySelector("[data-voice-rate]"),
   voiceRateValue: document.querySelector("[data-voice-rate-value]"),
+  replyLength: document.querySelector("[data-reply-length]"),
   profileName: document.querySelector("[data-profile-name]"),
   saveProfile: document.querySelector("[data-save-profile]"),
   exportProfile: document.querySelector("[data-export-profile]"),
@@ -96,6 +102,7 @@ let isAwaitingWakeCommand = false;
 let deferredInstallPrompt;
 let memories = loadMemories();
 let voiceSettings = loadVoiceSettings();
+let replySettings = loadReplySettings();
 let profile = loadProfile();
 let avatarSettings = loadAvatarSettings();
 let availableVoices = [];
@@ -106,6 +113,7 @@ renderMessages();
 renderMemories();
 setupAvatarCustomization();
 setupVoiceSettings();
+setupReplySettings();
 setupProfileSync();
 setupQuickLaunch();
 setupScreenContext();
@@ -249,21 +257,27 @@ async function buildAssistantReply(content) {
   const knowledgeQuestion = detectKnowledgeQuestion(content);
 
   if (knowledgeQuestion.isSearch) {
-    return searchAndReply(knowledgeQuestion.query);
+    return searchAndReply(knowledgeQuestion.query, { automatic: true });
   }
 
   const relevantMemories = getRelevantMemoryText(content, memories);
-  const reply = getLilGResponse(content, messages, { relevantMemories });
+  const reply = getLilGResponse(content, messages, {
+    relevantMemories,
+    replyLength: replySettings.length
+  });
 
   return createAssistantMessage(withSavedMemoryText(reply, automaticMemoryResult.added));
 }
 
-async function searchAndReply(query) {
-  setStatus(`Searching the internet for "${query}"...`);
+async function searchAndReply(query, options = {}) {
+  setStatus(`${options.automatic ? "Going online to answer" : "Searching the internet for"} "${query}"...`);
 
   try {
     const searchResult = await searchInternet(query);
-    return createAssistantMessage(formatSearchReply(searchResult), {
+    return createAssistantMessage(formatSearchReply(searchResult, {
+      automatic: Boolean(options.automatic),
+      replyLength: replySettings.length
+    }), {
       sources: createSources(searchResult)
     });
   } catch {
@@ -491,6 +505,17 @@ function setupVoiceSettings() {
   }
 }
 
+function setupReplySettings() {
+  syncReplyControls();
+
+  elements.replyLength.addEventListener("change", () => {
+    replySettings = saveReplySettings({
+      length: elements.replyLength.value
+    });
+    setStatus(`AI response length set to ${formatAvatarOptionLabel(replySettings.length)}.`);
+  });
+}
+
 function setupProfileSync() {
   elements.profileName.value = profile.displayName;
 
@@ -507,6 +532,7 @@ function setupProfileSync() {
       profile,
       memories,
       voiceSettings,
+      replySettings,
       avatarSettings
     });
     setStatus("Profile sync code created. Paste it on another device to connect this profile.");
@@ -518,6 +544,7 @@ function setupProfileSync() {
         profile,
         memories,
         voiceSettings,
+        replySettings,
         avatarSettings
       });
     }
@@ -536,12 +563,14 @@ function setupProfileSync() {
       profile = saveProfile(payload.profile);
       memories = saveMemories(payload.memories);
       voiceSettings = saveVoiceSettings(payload.voiceSettings);
+      replySettings = saveReplySettings(payload.replySettings);
       avatarSettings = saveAvatarSettings(payload.avatarSettings);
       elements.profileName.value = profile.displayName;
       elements.importProfileCode.value = "";
       renderMemories();
       renderAvatar();
       syncVoiceControls();
+      syncReplyControls();
       setStatus("Profile imported on this device.");
     } catch (error) {
       setStatus(error.message);
@@ -695,6 +724,45 @@ function applyVoiceSettings(nextSettings) {
     const preset = getVoicePreset(voiceSettings.presetId);
     setStatus(`Talk-back is on with the ${preset.label} voice.`);
   }
+}
+
+function syncReplyControls() {
+  elements.replyLength.value = replySettings.length;
+}
+
+function loadReplySettings(storage = globalThis.localStorage) {
+  if (!storage) {
+    return { ...defaultReplySettings };
+  }
+
+  try {
+    const rawSettings = storage.getItem(REPLY_SETTINGS_STORAGE_KEY);
+    return normalizeReplySettings(rawSettings ? JSON.parse(rawSettings) : {});
+  } catch {
+    return { ...defaultReplySettings };
+  }
+}
+
+function saveReplySettings(settings, storage = globalThis.localStorage) {
+  const normalizedSettings = normalizeReplySettings(settings);
+
+  if (!storage) {
+    return normalizedSettings;
+  }
+
+  try {
+    storage.setItem(REPLY_SETTINGS_STORAGE_KEY, JSON.stringify(normalizedSettings));
+  } catch {
+    return normalizedSettings;
+  }
+
+  return normalizedSettings;
+}
+
+function normalizeReplySettings(settings = {}) {
+  return {
+    length: ["short", "medium", "long"].includes(settings.length) ? settings.length : defaultReplySettings.length
+  };
 }
 
 function loadAvailableVoices() {
