@@ -1,4 +1,4 @@
-const CACHE_NAME = "lil-g-app-v6";
+const CACHE_NAME = "lil-g-app-v7";
 const APP_SHELL = [
   "./",
   "./index.html",
