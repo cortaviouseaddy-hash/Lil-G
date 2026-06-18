@@ -27,24 +27,14 @@ export function detectSearchIntent(input) {
 
 export function detectKnowledgeQuestion(input) {
   const trimmedInput = input.trim();
+  const query = cleanKnowledgeQuery(trimmedInput);
 
-  if (!isKnowledgeQuestionShape(trimmedInput) || isPersonalAssistantQuestion(trimmedInput)) {
+  if (!isKnowledgeQuestionShape(trimmedInput) || isPersonalAssistantQuestion(query)) {
     return {
       isSearch: false,
       query: ""
     };
   }
-
-  const query = cleanSearchQuery(
-    trimmedInput
-      .replace(/^(?:tell me about|teach me about|give me (?:info|information|facts) (?:on|about)|facts about)\s+/i, "")
-      .replace(/^(?:latest|current|recent)\s+(?:news|updates|information)\s+(?:on|about|for)\s+/i, "")
-      .replace(/^(?:news|updates)\s+(?:on|about|for)\s+/i, "")
-      .replace(/^(?:who|what|when|where)\s+(?:is|are|was|were|did|does|do)\s+/i, "")
-      .replace(/^why\s+(?:is|are|was|were|does|do|did)\s+/i, "")
-      .replace(/^how\s+(?:does|do|did)\s+/i, "")
-      .replace(/^what\s+(?:causes|caused)\s+/i, "")
-  );
 
   return {
     isSearch: Boolean(query),
@@ -136,6 +126,19 @@ function cleanSearchQuery(value) {
     .replace(/^(?:for|about)\s+/i, "")
     .replace(/[.?!]+$/g, "")
     .replace(/\s+/g, " ");
+}
+
+function cleanKnowledgeQuery(value) {
+  return cleanSearchQuery(
+    value
+      .replace(/^(?:tell me about|teach me about|give me (?:info|information|facts) (?:on|about)|facts about)\s+/i, "")
+      .replace(/^(?:latest|current|recent)\s+(?:news|updates|information)\s+(?:on|about|for)\s+/i, "")
+      .replace(/^(?:news|updates)\s+(?:on|about|for)\s+/i, "")
+      .replace(/^(?:who|what|when|where)\s+(?:is|are|was|were|did|does|do)\s+/i, "")
+      .replace(/^why\s+(?:is|are|was|were|does|do|did)\s+/i, "")
+      .replace(/^how\s+(?:does|do|did)\s+/i, "")
+      .replace(/^what\s+(?:causes|caused)\s+/i, "")
+  );
 }
 
 function isKnowledgeQuestionShape(input) {
