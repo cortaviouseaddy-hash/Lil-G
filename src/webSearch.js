@@ -1,6 +1,6 @@
 const searchPatterns = [
-  /\b(?:search|look\s+up|google)\s+(?:the\s+)?(?:internet|web)?\s*(?:for\s+)?(.+)/i,
-  /\b(?:search|look\s+up|google)\s+(.+)/i,
+  /\b(?:search|look\s+up|look\s+online|go\s+online|google)\s+(?:the\s+)?(?:internet|web)?\s*(?:for\s+)?(.+)/i,
+  /\b(?:search|look\s+up|look\s+online|go\s+online|google)\s+(.+)/i,
   /\bfind\s+(?:me\s+)?(?:information\s+)?(?:about\s+)?(.+?)\s+(?:on\s+)?(?:the\s+)?(?:internet|web)\b/i
 ];
 
@@ -121,7 +121,7 @@ export function createWebSearchUrl(query) {
 }
 
 function cleanSearchQuery(value) {
-  return value
+  return normalizeSearchTerms(value)
     .trim()
     .replace(/^(?:for|about)\s+/i, "")
     .replace(/[.?!]+$/g, "")
@@ -134,7 +134,9 @@ function cleanKnowledgeQuery(value) {
       .replace(/^(?:tell me about|teach me about|give me (?:info|information|facts) (?:on|about)|facts about)\s+/i, "")
       .replace(/^(?:latest|current|recent)\s+(?:news|updates|information)\s+(?:on|about|for)\s+/i, "")
       .replace(/^(?:news|updates)\s+(?:on|about|for)\s+/i, "")
+      .replace(/^what(?:'s|s| is)\s+(?:the\s+)?(?:average|normal|typical)\s+/i, "average ")
       .replace(/^(?:who|what|when|where)\s+(?:is|are|was|were|did|does|do)\s+/i, "")
+      .replace(/^what(?:'s|s)\s+/i, "")
       .replace(/^why\s+(?:is|are|was|were|does|do|did)\s+/i, "")
       .replace(/^how\s+(?:does|do|did)\s+/i, "")
       .replace(/^what\s+(?:causes|caused)\s+/i, "")
@@ -143,6 +145,8 @@ function cleanKnowledgeQuery(value) {
 
 function isKnowledgeQuestionShape(input) {
   return /^(?:who|what|when|where)\s+(?:is|are|was|were|did|does|do)\b/i.test(input)
+    || /^what(?:'s|s| is)\s+(?:the\s+)?(?:average|normal|typical)\b/i.test(input)
+    || /^(?:average|normal|typical)\b.+\b(?:age|amount|cost|distance|height|length|price|size|speed|temperature|weight)\b/i.test(input)
     || /^why\s+(?:is|are|was|were|does|do|did)\b/i.test(input)
     || /^how\s+(?:does|do|did)\b/i.test(input)
     || /^what\s+(?:causes|caused)\b/i.test(input)
@@ -154,6 +158,13 @@ function isKnowledgeQuestionShape(input) {
 function isPersonalAssistantQuestion(input) {
   return /\b(i|me|my|mine|we|our|you|your|yours|lil-g|settings|avatar|memory|voice|talk-back)\b/i.test(input)
     || /\b(help|fix|build|make|create|write|choose|decide|should)\b/i.test(input);
+}
+
+function normalizeSearchTerms(value) {
+  return value
+    .replace(/\bdick\b/gi, "penis")
+    .replace(/\bcock\b/gi, "penis")
+    .replace(/\bpenis\s+size\b/gi, "human penis size");
 }
 
 function normalizeReplyLength(value) {

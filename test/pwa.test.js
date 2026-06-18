@@ -68,4 +68,12 @@ describe("PWA install structure", () => {
     assert.match(app, /updateViaCache: "none"/);
     assert.match(app, /registration\.update\(\)/);
   });
+
+  it("can reuse the last factual question for online follow-ups", async () => {
+    const app = await readFile(new URL("../src/app.js", import.meta.url), "utf8");
+
+    assert.match(app, /isSearchFollowUpRequest\(content\)/);
+    assert.match(app, /getPreviousSearchableUserQuery\(\)/);
+    assert.match(app, /searchAndReply\(followUpQuery, \{ automatic: true \}\)/);
+  });
 });
