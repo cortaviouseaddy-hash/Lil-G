@@ -54,11 +54,6 @@
       </section>
 
       <section class="chat-card" aria-label="Lil-G chat">
-        <div class="toolbar">
-          <button class="secondary-button" type="button" data-wake>Start wake listening</button>
-          <button class="secondary-button" type="button" data-stop-speech>Stop speaking</button>
-        </div>
-
         <details class="settings-card" id="settings-panel">
           <summary>
             <span>Settings</span>
@@ -128,6 +123,10 @@
                 <input type="checkbox" data-talk-back checked />
                 <span>Talk-back</span>
               </label>
+              <div class="voice-control-actions">
+                <button class="secondary-button" type="button" data-wake>Start wake listening</button>
+                <button class="secondary-button" type="button" data-stop-speech>Stop speaking</button>
+              </div>
               <label class="select-control">
                 <span>Voice style</span>
                 <select data-voice-presets></select>
