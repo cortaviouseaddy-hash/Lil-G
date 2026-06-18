@@ -948,10 +948,27 @@ function registerServiceWorker() {
     return;
   }
 
+  const hadController = Boolean(navigator.serviceWorker.controller);
+  let didReloadAfterUpdate = false;
+
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!hadController || didReloadAfterUpdate) {
+      return;
+    }
+
+    didReloadAfterUpdate = true;
+    window.location.reload();
+  });
+
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch(() => {
-      setStatus("Lil-G works online, but offline app setup is unavailable.");
-    });
+    navigator.serviceWorker
+      .register("./sw.js", { updateViaCache: "none" })
+      .then((registration) => {
+        registration.update().catch(() => {});
+      })
+      .catch(() => {
+        setStatus("Lil-G works online, but offline app setup is unavailable.");
+      });
   });
 }
 

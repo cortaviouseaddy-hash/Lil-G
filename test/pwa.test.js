@@ -42,7 +42,7 @@ describe("PWA install structure", () => {
   it("caches the app shell in the service worker", async () => {
     const serviceWorker = await readFile(new URL("../sw.js", import.meta.url), "utf8");
 
-    assert.match(serviceWorker, /const CACHE_NAME = "lil-g-app-v7"/);
+    assert.match(serviceWorker, /const CACHE_NAME = "lil-g-app-v8"/);
     assert.match(serviceWorker, /"\.\/index\.html"/);
     assert.match(serviceWorker, /"\.\/manifest\.webmanifest"/);
     assert.match(serviceWorker, /"\.\/src\/appActions\.js"/);
@@ -52,5 +52,20 @@ describe("PWA install structure", () => {
     assert.match(serviceWorker, /"\.\/src\/voiceSettings\.js"/);
     assert.match(serviceWorker, /"\.\/src\/webSearch\.js"/);
     assert.match(serviceWorker, /"\.\/assets\/icons\/icon-512\.png"/);
+  });
+
+  it("uses a fresh-first update path for controlled app clients", async () => {
+    const [app, serviceWorker] = await Promise.all([
+      readFile(new URL("../src/app.js", import.meta.url), "utf8"),
+      readFile(new URL("../sw.js", import.meta.url), "utf8")
+    ]);
+
+    assert.match(serviceWorker, /APP_SHELL_URLS\.has\(requestUrl\.href\)/);
+    assert.match(serviceWorker, /networkFirst\(event\.request, "\.\/index\.html"\)/);
+    assert.match(serviceWorker, /requestUrl\.origin !== self\.location\.origin/);
+    assert.match(app, /controllerchange/);
+    assert.match(app, /window\.location\.reload\(\)/);
+    assert.match(app, /updateViaCache: "none"/);
+    assert.match(app, /registration\.update\(\)/);
   });
 });
