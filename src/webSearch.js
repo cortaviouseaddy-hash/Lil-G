@@ -25,6 +25,30 @@ export function detectSearchIntent(input) {
   };
 }
 
+export function detectKnowledgeQuestion(input) {
+  const trimmedInput = input.trim();
+
+  if (!isKnowledgeQuestionShape(trimmedInput) || isPersonalAssistantQuestion(trimmedInput)) {
+    return {
+      isSearch: false,
+      query: ""
+    };
+  }
+
+  const query = cleanSearchQuery(
+    trimmedInput
+      .replace(/^(?:who|what|when|where)\s+(?:is|are|was|were|did|does|do)\s+/i, "")
+      .replace(/^why\s+(?:is|are|was|were|does|do|did)\s+/i, "")
+      .replace(/^how\s+(?:does|do|did)\s+/i, "")
+      .replace(/^what\s+(?:causes|caused)\s+/i, "")
+  );
+
+  return {
+    isSearch: Boolean(query),
+    query
+  };
+}
+
 export async function searchInternet(query, options = {}) {
   const fetchImpl = options.fetchImpl ?? globalThis.fetch;
   const language = options.language ?? "en";
@@ -92,4 +116,16 @@ function cleanSearchQuery(value) {
     .replace(/^(?:for|about)\s+/i, "")
     .replace(/[.?!]+$/g, "")
     .replace(/\s+/g, " ");
+}
+
+function isKnowledgeQuestionShape(input) {
+  return /^(?:who|what|when|where)\s+(?:is|are|was|were|did|does|do)\b/i.test(input)
+    || /^why\s+(?:is|are|was|were|does|do|did)\b/i.test(input)
+    || /^how\s+(?:does|do|did)\b/i.test(input)
+    || /^what\s+(?:causes|caused)\b/i.test(input);
+}
+
+function isPersonalAssistantQuestion(input) {
+  return /\b(i|me|my|mine|we|our|you|your|yours|lil-g|settings|avatar|memory|voice|talk-back)\b/i.test(input)
+    || /\b(help|fix|build|make|create|write|choose|decide|should)\b/i.test(input);
 }

@@ -41,7 +41,13 @@ import {
   voicePresets
 } from "../src/voiceSettings.js";
 import { detectWakePhrase, isWakePhrase } from "../src/wakeWord.js";
-import { createWebSearchUrl, detectSearchIntent, formatSearchReply, searchInternet } from "../src/webSearch.js";
+import {
+  createWebSearchUrl,
+  detectKnowledgeQuestion,
+  detectSearchIntent,
+  formatSearchReply,
+  searchInternet
+} from "../src/webSearch.js";
 
 describe("getLilGResponse", () => {
   it("answers greetings with an introduction", () => {
@@ -59,7 +65,22 @@ describe("getLilGResponse", () => {
   it("answers questions with a next-step response", () => {
     const response = getLilGResponse("How should I start building something?");
 
-    assert.match(response, /Good question/);
+    assert.match(response, /practical way/i);
+    assert.match(response, /step-by-step/i);
+  });
+
+  it("solves simple arithmetic questions", () => {
+    const response = getLilGResponse("What is 12 plus 8 divided by 2?");
+
+    assert.match(response, /answer is 16/);
+    assert.match(response, /Quick work/);
+  });
+
+  it("gives troubleshooting structure for problems", () => {
+    const response = getLilGResponse("Can you help me fix this error?");
+
+    assert.match(response, /troubleshoot/i);
+    assert.match(response, /exact error/i);
   });
 
   it("uses conversation history for reflective replies", () => {
@@ -365,6 +386,17 @@ describe("web search helpers", () => {
       query: "Lil G news"
     });
     assert.deepEqual(detectSearchIntent("tell me a joke"), {
+      isSearch: false,
+      query: ""
+    });
+  });
+
+  it("detects factual questions for sourced search without catching personal help", () => {
+    assert.deepEqual(detectKnowledgeQuestion("What is photosynthesis?"), {
+      isSearch: true,
+      query: "photosynthesis"
+    });
+    assert.deepEqual(detectKnowledgeQuestion("How can I fix my app?"), {
       isSearch: false,
       query: ""
     });

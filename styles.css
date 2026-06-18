@@ -32,6 +32,7 @@ body.has-startup-open {
 
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
@@ -157,9 +158,7 @@ h1 {
   line-height: 1.6;
 }
 
-.install-card,
-.avatar-card,
-.memory-card {
+.install-card {
   margin-top: 1.5rem;
   border: 1px solid rgba(124, 219, 181, 0.22);
   border-radius: 1.25rem;
@@ -167,17 +166,13 @@ h1 {
   padding: 1rem;
 }
 
-.install-card strong,
-.avatar-card strong,
-.memory-card strong {
+.install-card strong {
   display: block;
   color: var(--accent);
   margin-bottom: 0.4rem;
 }
 
-.install-card p,
-.avatar-card p,
-.memory-card p {
+.install-card p {
   color: var(--muted);
   line-height: 1.5;
   margin: 0 0 0.85rem;
@@ -187,19 +182,9 @@ h1 {
   display: none;
 }
 
-.memory-card {
-  display: grid;
-  gap: 0.9rem;
-}
-
-.avatar-card {
-  display: grid;
-  gap: 1rem;
-}
-
 .avatar-preview {
   display: grid;
-  min-height: 13rem;
+  min-height: 12rem;
   place-items: center;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 1rem;
@@ -448,39 +433,7 @@ h1 {
   margin: 0;
 }
 
-.avatar-customizer-grid {
-  display: grid;
-  gap: 0.85rem;
-}
-
-.avatar-option-group {
-  display: grid;
-  gap: 0.45rem;
-}
-
-.avatar-option-group > span {
-  color: var(--text);
-  font-weight: 800;
-}
-
-.avatar-button-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-}
-
-.avatar-option-button {
-  color: var(--text);
-  background: rgba(32, 39, 56, 0.92);
-  padding: 0.62rem 0.8rem;
-}
-
-.avatar-option-button.is-selected {
-  color: #07120e;
-  background: var(--accent);
-}
-
-.memory-card ul {
+.memory-list {
   display: grid;
   gap: 0.45rem;
   margin: 0;
@@ -549,15 +502,50 @@ h1 {
 }
 
 .settings-card summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-radius: 999px;
   color: var(--accent);
   cursor: pointer;
   font-weight: 800;
+  list-style: none;
+  background: var(--panel-strong);
+  padding: 0.85rem 1rem;
+}
+
+.settings-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-card summary::after {
+  color: var(--muted);
+  content: "Open";
+  font-size: 0.78rem;
+}
+
+.settings-card[open] summary::after {
+  content: "Close";
+}
+
+.settings-card summary small {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 .settings-grid {
   display: grid;
   gap: 1rem;
+  max-height: min(32rem, 70vh);
+  overflow-y: auto;
   padding-top: 0.9rem;
+}
+
+.settings-group {
+  display: grid;
+  gap: 0.8rem;
 }
 
 .settings-group p,
@@ -567,8 +555,32 @@ h1 {
   margin: 0.35rem 0 0;
 }
 
+.avatar-settings-layout {
+  display: grid;
+  grid-template-columns: minmax(10rem, 0.7fr) minmax(14rem, 1fr);
+  gap: 1rem;
+}
+
+.avatar-controls {
+  display: grid;
+  align-content: start;
+  gap: 0.85rem;
+}
+
+.dropdown-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.dropdown-action {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) auto;
+  align-items: end;
+  gap: 0.75rem;
+}
+
 .profile-sync-grid,
-.quick-launch-grid,
 .screen-controls {
   display: flex;
   flex-wrap: wrap;
@@ -577,6 +589,7 @@ h1 {
 }
 
 .profile-sync-grid label,
+.select-control,
 .text-area-control {
   display: grid;
   gap: 0.4rem;
@@ -589,6 +602,7 @@ h1 {
 }
 
 .profile-sync-grid input,
+.select-control select,
 .text-area-control textarea {
   width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -600,9 +614,14 @@ h1 {
 }
 
 .profile-sync-grid input:focus,
+.select-control select:focus,
 .text-area-control textarea:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 0.2rem rgba(124, 219, 181, 0.16);
+}
+
+.select-control select {
+  cursor: pointer;
 }
 
 .text-area-control {
@@ -612,28 +631,6 @@ h1 {
 .text-area-control textarea {
   min-height: 4.8rem;
   resize: vertical;
-}
-
-.quick-launch-button {
-  flex: 1 1 8rem;
-}
-
-.voice-preset-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.55rem;
-  margin-top: 0.8rem;
-}
-
-.voice-preset-button {
-  border: 1px solid transparent;
-  padding: 0.7rem 0.85rem;
-}
-
-.voice-preset-button.is-selected {
-  border-color: var(--accent);
-  color: #07120e;
-  background: var(--accent);
 }
 
 .range-control {
@@ -773,8 +770,10 @@ h1 {
     min-height: 35rem;
   }
 
-  .voice-preset-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .avatar-settings-layout,
+  .dropdown-grid,
+  .dropdown-action {
+    grid-template-columns: 1fr;
   }
 }
 
