@@ -25,6 +25,23 @@ export function detectSearchIntent(input) {
   };
 }
 
+export function detectKnowledgeQuestion(input) {
+  const trimmedInput = input.trim();
+  const query = cleanKnowledgeQuery(trimmedInput);
+
+  if (!isKnowledgeQuestionShape(trimmedInput) || isPersonalAssistantQuestion(query)) {
+    return {
+      isSearch: false,
+      query: ""
+    };
+  }
+
+  return {
+    isSearch: Boolean(query),
+    query
+  };
+}
+
 export async function searchInternet(query, options = {}) {
   const fetchImpl = options.fetchImpl ?? globalThis.fetch;
   const language = options.language ?? "en";
@@ -70,16 +87,33 @@ export async function searchInternet(query, options = {}) {
   };
 }
 
-export function formatSearchReply(searchResult) {
+export function formatSearchReply(searchResult, options = {}) {
+  const replyLength = normalizeReplyLength(options.replyLength);
+  const action = options.automatic ? "went online to answer" : "searched the internet for";
+
   if (!searchResult.results.length) {
-    return `I searched for "${searchResult.query}" but could not find a strong summary result. You can keep searching here: ${searchResult.webSearchUrl}`;
+    if (replyLength === "short") {
+      return `I ${action} "${searchResult.query}", but I could not find a strong summary.`;
+    }
+
+    return `I ${action} "${searchResult.query}", but I could not find a strong summary result. You can keep searching here: ${searchResult.webSearchUrl}`;
   }
 
-  const resultLines = searchResult.results
+  const results = replyLength === "short" ? searchResult.results.slice(0, 1) : searchResult.results;
+  const resultLines = results
     .map((result, index) => `${index + 1}. ${result.title}: ${result.snippet}`)
     .join("\n");
 
-  return `I searched the internet for "${searchResult.query}". Here's what I found:\n${resultLines}`;
+  if (replyLength === "short") {
+    const [result] = results;
+    return `I ${action} "${searchResult.query}". ${result.title}: ${result.snippet}`;
+  }
+
+  if (replyLength === "long") {
+    return `I ${action} "${searchResult.query}". Here's what I found:\n${resultLines}\n\nUse these as starting points, and open the sources if you want to verify details or go deeper.`;
+  }
+
+  return `I ${action} "${searchResult.query}". Here's what I found:\n${resultLines}`;
 }
 
 export function createWebSearchUrl(query) {
@@ -92,4 +126,36 @@ function cleanSearchQuery(value) {
     .replace(/^(?:for|about)\s+/i, "")
     .replace(/[.?!]+$/g, "")
     .replace(/\s+/g, " ");
+}
+
+function cleanKnowledgeQuery(value) {
+  return cleanSearchQuery(
+    value
+      .replace(/^(?:tell me about|teach me about|give me (?:info|information|facts) (?:on|about)|facts about)\s+/i, "")
+      .replace(/^(?:latest|current|recent)\s+(?:news|updates|information)\s+(?:on|about|for)\s+/i, "")
+      .replace(/^(?:news|updates)\s+(?:on|about|for)\s+/i, "")
+      .replace(/^(?:who|what|when|where)\s+(?:is|are|was|were|did|does|do)\s+/i, "")
+      .replace(/^why\s+(?:is|are|was|were|does|do|did)\s+/i, "")
+      .replace(/^how\s+(?:does|do|did)\s+/i, "")
+      .replace(/^what\s+(?:causes|caused)\s+/i, "")
+  );
+}
+
+function isKnowledgeQuestionShape(input) {
+  return /^(?:who|what|when|where)\s+(?:is|are|was|were|did|does|do)\b/i.test(input)
+    || /^why\s+(?:is|are|was|were|does|do|did)\b/i.test(input)
+    || /^how\s+(?:does|do|did)\b/i.test(input)
+    || /^what\s+(?:causes|caused)\b/i.test(input)
+    || /^(?:tell me about|teach me about|give me (?:info|information|facts) (?:on|about)|facts about)\b/i.test(input)
+    || /^(?:latest|current|recent)\s+(?:news|updates|information)\s+(?:on|about|for)\b/i.test(input)
+    || /^(?:news|updates)\s+(?:on|about|for)\b/i.test(input);
+}
+
+function isPersonalAssistantQuestion(input) {
+  return /\b(i|me|my|mine|we|our|you|your|yours|lil-g|settings|avatar|memory|voice|talk-back)\b/i.test(input)
+    || /\b(help|fix|build|make|create|write|choose|decide|should)\b/i.test(input);
+}
+
+function normalizeReplyLength(value) {
+  return ["short", "medium", "long"].includes(value) ? value : "medium";
 }

@@ -34,13 +34,14 @@ export function saveProfile(profile, storage = globalThis.localStorage) {
   return normalizedProfile;
 }
 
-export function createProfileSyncCode({ profile, memories, voiceSettings, avatarSettings }, options = {}) {
+export function createProfileSyncCode({ profile, memories, voiceSettings, replySettings, avatarSettings }, options = {}) {
   const payload = {
     version: PROFILE_SYNC_VERSION,
     createdAt: options.createdAt ?? new Date().toISOString(),
     profile: normalizeProfile(profile),
     memories: Array.isArray(memories) ? memories : [],
     voiceSettings: voiceSettings ?? {},
+    replySettings: replySettings ?? {},
     avatarSettings: avatarSettings ?? {}
   };
 
@@ -61,6 +62,7 @@ export function parseProfileSyncCode(code) {
       profile: normalizeProfile(payload.profile),
       memories: Array.isArray(payload.memories) ? payload.memories.filter(isValidMemory) : [],
       voiceSettings: payload.voiceSettings ?? {},
+      replySettings: payload.replySettings ?? {},
       avatarSettings: payload.avatarSettings ?? {}
     };
   } catch (error) {

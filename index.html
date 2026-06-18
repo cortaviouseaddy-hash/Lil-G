@@ -39,8 +39,8 @@
         <p>
           Type a message, tap the mic, or start wake listening and say
           "Hey Lil-G" if your browser supports speech recognition. Lil-G replies
-          in chat, can search the internet, and can remember facts on this
-          device.
+          in chat, can search the internet, answer common questions, work
+          through problems, and remember facts on this device.
         </p>
         <div class="install-card">
           <strong>Install it on your phone, tablet, laptop, or desktop</strong>
@@ -51,87 +51,122 @@
           </p>
           <button type="button" data-install hidden>Install app</button>
         </div>
-        <div class="avatar-card" id="avatar-customizer">
-          <div>
-            <strong>Customize your assistant avatar</strong>
-            <p>
-              Build a smooth, non-explicit AI avatar from colors and shapes.
-              Choose a label, color, shape, hair, face, and body style.
-            </p>
-          </div>
-
-          <div class="avatar-preview" data-avatar-preview aria-label="Assistant avatar preview">
-            <div class="avatar-figure" data-avatar-figure>
-              <div class="avatar-hair"></div>
-              <div class="avatar-head">
-                <span class="avatar-eye avatar-eye--left"></span>
-                <span class="avatar-eye avatar-eye--right"></span>
-                <span class="avatar-mouth"></span>
-              </div>
-              <div class="avatar-torso"></div>
-            </div>
-          </div>
-
-          <p class="avatar-summary" data-avatar-summary></p>
-
-          <div class="avatar-customizer-grid">
-            <div class="avatar-option-group">
-              <span>Am I a boy or girl?</span>
-              <div class="avatar-button-grid" data-avatar-options="identity"></div>
-            </div>
-            <div class="avatar-option-group">
-              <span>Pick a color</span>
-              <div class="avatar-button-grid" data-avatar-options="color"></div>
-            </div>
-            <div class="avatar-option-group">
-              <span>Pick a shape</span>
-              <div class="avatar-button-grid" data-avatar-options="shape"></div>
-            </div>
-            <div class="avatar-option-group">
-              <span>Hair style</span>
-              <div class="avatar-button-grid" data-avatar-options="hair"></div>
-            </div>
-            <div class="avatar-option-group">
-              <span>Face style</span>
-              <div class="avatar-button-grid" data-avatar-options="face"></div>
-            </div>
-            <div class="avatar-option-group">
-              <span>Body shape</span>
-              <div class="avatar-button-grid" data-avatar-options="body"></div>
-            </div>
-            <div class="avatar-option-group">
-              <span>Clothes</span>
-              <div class="avatar-button-grid" data-avatar-options="clothes"></div>
-            </div>
-          </div>
-        </div>
-        <div class="memory-card">
-          <div>
-            <strong>Memory</strong>
-            <p>Say "remember that..." and Lil-G will save it on this device.</p>
-          </div>
-          <button class="secondary-button" type="button" data-clear-memory>Clear memory</button>
-          <ul data-memory-list></ul>
-        </div>
       </section>
 
       <section class="chat-card" aria-label="Lil-G chat">
-        <div class="toolbar">
-          <label class="toggle">
-            <input type="checkbox" data-talk-back checked />
-            <span>Talk-back</span>
-          </label>
-          <button class="secondary-button" type="button" data-wake>Start wake listening</button>
-          <button class="secondary-button" type="button" data-stop-speech>Stop speaking</button>
-        </div>
-
-        <details class="settings-card" id="voice-settings">
-          <summary>Voice and device settings</summary>
+        <details class="settings-card" id="settings-panel">
+          <summary>
+            <span>Settings</span>
+            <small>Avatar, voice, memory, launch, and device controls</small>
+          </summary>
           <div class="settings-grid">
             <div class="settings-group">
-              <strong>Voice style</strong>
-              <p>Choose one of six talk-back styles. The exact system voice depends on your browser.</p>
-              <div class="voice-preset-grid" data-voice-presets></div>
+              <strong>Avatar customization</strong>
+              <p>
+                Build a more realistic, non-explicit AI avatar portrait from
+                dropdowns for label, color, face shape, hair, expression, body,
+                and clothes.
+              </p>
+
+              <div class="avatar-settings-layout">
+                <div class="avatar-preview" data-avatar-preview aria-label="Assistant avatar preview">
+                  <div class="avatar-figure" data-avatar-figure>
+                    <div class="avatar-hair"></div>
+                    <div class="avatar-head">
+                      <span class="avatar-ear avatar-ear--left"></span>
+                      <span class="avatar-ear avatar-ear--right"></span>
+                      <span class="avatar-brow avatar-brow--left"></span>
+                      <span class="avatar-brow avatar-brow--right"></span>
+                      <span class="avatar-eye avatar-eye--left"></span>
+                      <span class="avatar-eye avatar-eye--right"></span>
+                      <span class="avatar-nose"></span>
+                      <span class="avatar-mouth"></span>
+                    </div>
+                    <div class="avatar-neck"></div>
+                    <div class="avatar-torso"></div>
+                  </div>
+                </div>
+
+                <div class="avatar-controls">
+                  <p class="avatar-summary" data-avatar-summary></p>
+                  <div class="dropdown-grid">
+                    <label class="select-control">
+                      <span>Am I a boy or girl?</span>
+                      <select data-avatar-options="identity"></select>
+                    </label>
+                    <label class="select-control">
+                      <span>Skin / glow color</span>
+                      <select data-avatar-options="color"></select>
+                    </label>
+                    <label class="select-control">
+                      <span>Face shape</span>
+                      <select data-avatar-options="shape"></select>
+                    </label>
+                    <label class="select-control">
+                      <span>Hair style</span>
+                      <select data-avatar-options="hair"></select>
+                    </label>
+                    <label class="select-control">
+                      <span>Face style</span>
+                      <select data-avatar-options="face"></select>
+                    </label>
+                    <label class="select-control">
+                      <span>Body shape</span>
+                      <select data-avatar-options="body"></select>
+                    </label>
+                    <label class="select-control">
+                      <span>Clothes</span>
+                      <select data-avatar-options="clothes"></select>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-group">
+              <strong>Voice and talk-back</strong>
+              <p>Choose a talk-back style from the dropdown. The exact system voice depends on your browser.</p>
+              <label class="toggle">
+                <input type="checkbox" data-talk-back checked />
+                <span>Talk-back</span>
+              </label>
+              <div class="voice-control-actions">
+                <button class="secondary-button" type="button" data-wake>Start wake listening</button>
+                <button class="secondary-button" type="button" data-stop-speech>Stop speaking</button>
+              </div>
+              <label class="select-control">
+                <span>Voice style</span>
+                <select data-voice-presets></select>
+              </label>
+              <label class="range-control">
+                <span>Pitch <output data-voice-pitch-value>1.00</output></span>
+                <input data-voice-pitch min="0.4" max="1.8" step="0.01" type="range" value="1" />
+              </label>
+
+              <label class="range-control">
+                <span>Speed <output data-voice-rate-value>1.00</output></span>
+                <input data-voice-rate min="0.65" max="1.45" step="0.01" type="range" value="1" />
+              </label>
+            </div>
+
+            <div class="settings-group">
+              <strong>AI behavior</strong>
+              <p>Choose how much Lil-G says back when it answers or has a conversation.</p>
+              <label class="select-control">
+                <span>Response length</span>
+                <select data-reply-length>
+                  <option value="short">Short</option>
+                  <option value="medium">Medium</option>
+                  <option value="long">Long</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="settings-group">
+              <strong>Memory</strong>
+              <p>Say "remember that..." and Lil-G will save it on this device.</p>
+              <button class="secondary-button" type="button" data-clear-memory>Clear memory</button>
+              <ul class="memory-list" data-memory-list></ul>
             </div>
 
             <div class="settings-group">
@@ -163,19 +198,15 @@
 
             <div class="settings-group">
               <strong>Quick launch</strong>
-              <p>Open supported web apps or browser pages in a new tab. Some devices may hand these links off to installed apps.</p>
-              <div class="quick-launch-grid" data-quick-launch></div>
+              <p>Choose a supported web app or browser page, then open it in a new tab.</p>
+              <div class="dropdown-action">
+                <label class="select-control">
+                  <span>Launch target</span>
+                  <select data-quick-launch></select>
+                </label>
+                <button class="secondary-button" type="button" data-open-launch>Open selected</button>
+              </div>
             </div>
-
-            <label class="range-control">
-              <span>Pitch <output data-voice-pitch-value>1.00</output></span>
-              <input data-voice-pitch min="0.4" max="1.8" step="0.01" type="range" value="1" />
-            </label>
-
-            <label class="range-control">
-              <span>Speed <output data-voice-rate-value>1.00</output></span>
-              <input data-voice-rate min="0.65" max="1.45" step="0.01" type="range" value="1" />
-            </label>
 
             <div class="settings-group">
               <strong>Screen context</strong>

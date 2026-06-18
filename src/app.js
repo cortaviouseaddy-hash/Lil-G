@@ -36,7 +36,18 @@ import {
   voicePresets
 } from "./voiceSettings.js";
 import { detectWakePhrase } from "./wakeWord.js";
-import { createWebSearchUrl, detectSearchIntent, formatSearchReply, searchInternet } from "./webSearch.js";
+import {
+  createWebSearchUrl,
+  detectKnowledgeQuestion,
+  detectSearchIntent,
+  formatSearchReply,
+  searchInternet
+} from "./webSearch.js";
+
+const REPLY_SETTINGS_STORAGE_KEY = "lil-g-reply-settings-v1";
+const defaultReplySettings = {
+  length: "medium"
+};
 
 const messages = [
   createAssistantMessage(
@@ -61,6 +72,7 @@ const elements = {
   voicePitchValue: document.querySelector("[data-voice-pitch-value]"),
   voiceRate: document.querySelector("[data-voice-rate]"),
   voiceRateValue: document.querySelector("[data-voice-rate-value]"),
+  replyLength: document.querySelector("[data-reply-length]"),
   profileName: document.querySelector("[data-profile-name]"),
   saveProfile: document.querySelector("[data-save-profile]"),
   exportProfile: document.querySelector("[data-export-profile]"),
@@ -75,9 +87,11 @@ const elements = {
   startup: document.querySelector("[data-startup-screen]"),
   startCustomizing: document.querySelector("[data-start-customizing]"),
   skipStartup: document.querySelector("[data-skip-startup]"),
+  settingsPanel: document.querySelector("#settings-panel"),
   avatarFigure: document.querySelector("[data-avatar-figure]"),
   avatarSummary: document.querySelector("[data-avatar-summary]"),
-  avatarOptionGroups: document.querySelectorAll("[data-avatar-options]")
+  avatarOptionControls: document.querySelectorAll("[data-avatar-options]"),
+  openLaunch: document.querySelector("[data-open-launch]")
 };
 
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -88,6 +102,7 @@ let isAwaitingWakeCommand = false;
 let deferredInstallPrompt;
 let memories = loadMemories();
 let voiceSettings = loadVoiceSettings();
+let replySettings = loadReplySettings();
 let profile = loadProfile();
 let avatarSettings = loadAvatarSettings();
 let availableVoices = [];
@@ -98,6 +113,7 @@ renderMessages();
 renderMemories();
 setupAvatarCustomization();
 setupVoiceSettings();
+setupReplySettings();
 setupProfileSync();
 setupQuickLaunch();
 setupScreenContext();
@@ -238,18 +254,30 @@ async function buildAssistantReply(content) {
     return searchAndReply(searchIntent.query);
   }
 
+  const knowledgeQuestion = detectKnowledgeQuestion(content);
+
+  if (knowledgeQuestion.isSearch) {
+    return searchAndReply(knowledgeQuestion.query, { automatic: true });
+  }
+
   const relevantMemories = getRelevantMemoryText(content, memories);
-  const reply = getLilGResponse(content, messages, { relevantMemories });
+  const reply = getLilGResponse(content, messages, {
+    relevantMemories,
+    replyLength: replySettings.length
+  });
 
   return createAssistantMessage(withSavedMemoryText(reply, automaticMemoryResult.added));
 }
 
-async function searchAndReply(query) {
-  setStatus(`Searching the internet for "${query}"...`);
+async function searchAndReply(query, options = {}) {
+  setStatus(`${options.automatic ? "Going online to answer" : "Searching the internet for"} "${query}"...`);
 
   try {
     const searchResult = await searchInternet(query);
-    return createAssistantMessage(formatSearchReply(searchResult), {
+    return createAssistantMessage(formatSearchReply(searchResult, {
+      automatic: Boolean(options.automatic),
+      replyLength: replySettings.length
+    }), {
       sources: createSources(searchResult)
     });
   } catch {
@@ -464,13 +492,28 @@ function setupSpeechRecognition() {
 }
 
 function setupVoiceSettings() {
-  renderVoicePresetButtons();
+  renderVoicePresetOptions();
   syncVoiceControls();
   loadAvailableVoices();
+
+  elements.voicePresets.addEventListener("change", () => {
+    applyVoiceSettings(createPresetSettings(elements.voicePresets.value));
+  });
 
   if (canSpeak() && typeof window.speechSynthesis.addEventListener === "function") {
     window.speechSynthesis.addEventListener("voiceschanged", loadAvailableVoices);
   }
+}
+
+function setupReplySettings() {
+  syncReplyControls();
+
+  elements.replyLength.addEventListener("change", () => {
+    replySettings = saveReplySettings({
+      length: elements.replyLength.value
+    });
+    setStatus(`AI response length set to ${formatAvatarOptionLabel(replySettings.length)}.`);
+  });
 }
 
 function setupProfileSync() {
@@ -489,6 +532,7 @@ function setupProfileSync() {
       profile,
       memories,
       voiceSettings,
+      replySettings,
       avatarSettings
     });
     setStatus("Profile sync code created. Paste it on another device to connect this profile.");
@@ -500,6 +544,7 @@ function setupProfileSync() {
         profile,
         memories,
         voiceSettings,
+        replySettings,
         avatarSettings
       });
     }
@@ -518,12 +563,14 @@ function setupProfileSync() {
       profile = saveProfile(payload.profile);
       memories = saveMemories(payload.memories);
       voiceSettings = saveVoiceSettings(payload.voiceSettings);
+      replySettings = saveReplySettings(payload.replySettings);
       avatarSettings = saveAvatarSettings(payload.avatarSettings);
       elements.profileName.value = profile.displayName;
       elements.importProfileCode.value = "";
       renderMemories();
       renderAvatar();
       syncVoiceControls();
+      syncReplyControls();
       setStatus("Profile imported on this device.");
     } catch (error) {
       setStatus(error.message);
@@ -536,8 +583,9 @@ function setupStartupIntro() {
 
   elements.startCustomizing.addEventListener("click", () => {
     hideStartupIntro();
-    document.querySelector("#avatar-customizer")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    setStatus("Let's customize your assistant avatar.");
+    elements.settingsPanel.open = true;
+    elements.settingsPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+    setStatus("Settings opened. Use the dropdowns to customize Lil-G.");
   });
 
   elements.skipStartup.addEventListener("click", () => {
@@ -552,23 +600,22 @@ function hideStartupIntro() {
 }
 
 function setupAvatarCustomization() {
-  for (const group of elements.avatarOptionGroups) {
-    const key = group.dataset.avatarOptions;
-    group.replaceChildren(
+  for (const control of elements.avatarOptionControls) {
+    const key = control.dataset.avatarOptions;
+    control.replaceChildren(
       ...avatarOptions[key].map((option) => {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "secondary-button avatar-option-button";
-        button.dataset.avatarOption = option;
-        button.textContent = formatAvatarOptionLabel(option);
-        button.addEventListener("click", () => {
-          avatarSettings = saveAvatarSettings(applyAvatarUpdate(avatarSettings, { [key]: option }));
-          renderAvatar();
-          setStatus(`Avatar ${formatAvatarOptionLabel(key)} set to ${formatAvatarOptionLabel(option)}.`);
-        });
-        return button;
+        const item = document.createElement("option");
+        item.value = option;
+        item.textContent = formatAvatarOptionLabel(option);
+        return item;
       })
     );
+
+    control.addEventListener("change", () => {
+      avatarSettings = saveAvatarSettings(applyAvatarUpdate(avatarSettings, { [key]: control.value }));
+      renderAvatar();
+      setStatus(`Avatar ${formatAvatarOptionLabel(key)} set to ${formatAvatarOptionLabel(control.value)}.`);
+    });
   }
 
   renderAvatar();
@@ -585,31 +632,33 @@ function renderAvatar() {
   elements.avatarFigure.dataset.clothes = avatar.clothes;
   elements.avatarSummary.textContent = `Current avatar: ${formatAvatarSummary(avatar)}.`;
 
-  for (const group of elements.avatarOptionGroups) {
-    const key = group.dataset.avatarOptions;
-
-    for (const button of group.querySelectorAll("[data-avatar-option]")) {
-      const isSelected = button.dataset.avatarOption === avatar[key];
-      button.classList.toggle("is-selected", isSelected);
-      button.setAttribute("aria-pressed", String(isSelected));
-    }
+  for (const control of elements.avatarOptionControls) {
+    const key = control.dataset.avatarOptions;
+    control.value = avatar[key];
   }
 }
 
 function setupQuickLaunch() {
   elements.quickLaunch.replaceChildren(
     ...getLaunchTargets().map((target) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "secondary-button quick-launch-button";
-      button.textContent = target.title;
-      button.addEventListener("click", () => {
-        openExternalUrl(target.url);
-        setStatus(`Opening ${target.title}.`);
-      });
-      return button;
+      const item = document.createElement("option");
+      item.value = target.url;
+      item.textContent = target.title;
+      return item;
     })
   );
+
+  elements.openLaunch.addEventListener("click", () => {
+    const target = getLaunchTargets().find((launchTarget) => launchTarget.url === elements.quickLaunch.value);
+
+    if (!target) {
+      setStatus("Choose something to open first.");
+      return;
+    }
+
+    openExternalUrl(target.url);
+    setStatus(`Opening ${target.title}.`);
+  });
 }
 
 function formatChangedAvatarKeys(keys) {
@@ -645,18 +694,14 @@ function setupScreenContext() {
   updateScreenState();
 }
 
-function renderVoicePresetButtons() {
+function renderVoicePresetOptions() {
   elements.voicePresets.replaceChildren(
     ...voicePresets.map((preset) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "secondary-button voice-preset-button";
-      button.dataset.voicePreset = preset.id;
-      button.textContent = preset.label;
-      button.title = preset.description;
-      button.setAttribute("aria-pressed", String(preset.id === voiceSettings.presetId));
-      button.addEventListener("click", () => applyVoiceSettings(createPresetSettings(preset.id)));
-      return button;
+      const item = document.createElement("option");
+      item.value = preset.id;
+      item.textContent = preset.label;
+      item.title = preset.description;
+      return item;
     })
   );
 }
@@ -668,12 +713,7 @@ function syncVoiceControls() {
   elements.voiceRate.value = String(voiceSettings.rate);
   elements.voicePitchValue.textContent = voiceSettings.pitch.toFixed(2);
   elements.voiceRateValue.textContent = voiceSettings.rate.toFixed(2);
-
-  for (const button of elements.voicePresets.querySelectorAll("[data-voice-preset]")) {
-    const isActive = button.dataset.voicePreset === preset.id;
-    button.classList.toggle("is-selected", isActive);
-    button.setAttribute("aria-pressed", String(isActive));
-  }
+  elements.voicePresets.value = preset.id;
 }
 
 function applyVoiceSettings(nextSettings) {
@@ -684,6 +724,45 @@ function applyVoiceSettings(nextSettings) {
     const preset = getVoicePreset(voiceSettings.presetId);
     setStatus(`Talk-back is on with the ${preset.label} voice.`);
   }
+}
+
+function syncReplyControls() {
+  elements.replyLength.value = replySettings.length;
+}
+
+function loadReplySettings(storage = globalThis.localStorage) {
+  if (!storage) {
+    return { ...defaultReplySettings };
+  }
+
+  try {
+    const rawSettings = storage.getItem(REPLY_SETTINGS_STORAGE_KEY);
+    return normalizeReplySettings(rawSettings ? JSON.parse(rawSettings) : {});
+  } catch {
+    return { ...defaultReplySettings };
+  }
+}
+
+function saveReplySettings(settings, storage = globalThis.localStorage) {
+  const normalizedSettings = normalizeReplySettings(settings);
+
+  if (!storage) {
+    return normalizedSettings;
+  }
+
+  try {
+    storage.setItem(REPLY_SETTINGS_STORAGE_KEY, JSON.stringify(normalizedSettings));
+  } catch {
+    return normalizedSettings;
+  }
+
+  return normalizedSettings;
+}
+
+function normalizeReplySettings(settings = {}) {
+  return {
+    length: ["short", "medium", "long"].includes(settings.length) ? settings.length : defaultReplySettings.length
+  };
 }
 
 function loadAvailableVoices() {
