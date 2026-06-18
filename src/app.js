@@ -254,6 +254,16 @@ async function buildAssistantReply(content) {
     return searchAndReply(searchIntent.query);
   }
 
+  if (isSearchFollowUpRequest(content)) {
+    const followUpQuery = getPreviousSearchableUserQuery();
+
+    if (followUpQuery) {
+      return searchAndReply(followUpQuery, { automatic: true });
+    }
+
+    return createAssistantMessage("Tell me what you want me to look up online, and I'll search for it.");
+  }
+
   const knowledgeQuestion = detectKnowledgeQuestion(content);
 
   if (knowledgeQuestion.isSearch) {
@@ -327,6 +337,35 @@ function createSources(searchResult) {
       url: searchResult.webSearchUrl
     }
   ];
+}
+
+function isSearchFollowUpRequest(content) {
+  return /^\s*(?:look|go|check|search)\s+(?:it\s+)?(?:up\s+)?online\s*[\s.?!]*$/i.test(content)
+    || /^\s*(?:look|check|search)\s+(?:the\s+)?(?:internet|web)\s*[\s.?!]*$/i.test(content);
+}
+
+function getPreviousSearchableUserQuery() {
+  for (let index = messages.length - 2; index >= 0; index -= 1) {
+    const message = messages[index];
+
+    if (message.role !== "user") {
+      continue;
+    }
+
+    const searchIntent = detectSearchIntent(message.content);
+
+    if (searchIntent.isSearch) {
+      return searchIntent.query;
+    }
+
+    const knowledgeQuestion = detectKnowledgeQuestion(message.content);
+
+    if (knowledgeQuestion.isSearch) {
+      return knowledgeQuestion.query;
+    }
+  }
+
+  return "";
 }
 
 function acknowledgeWakePhrase() {

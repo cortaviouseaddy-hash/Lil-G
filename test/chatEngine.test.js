@@ -123,6 +123,14 @@ describe("getLilGResponse", () => {
     assert.match(response, /stay in character/i);
   });
 
+  it("answers casual check-ins with a more personal reply", () => {
+    const response = getLilGResponse("How are you?");
+
+    assert.match(response, /doing good/i);
+    assert.match(response, /coffee cup/i);
+    assert.doesNotMatch(response, /Good question/);
+  });
+
   it("explains Discord message limits and pasted-message workflow", () => {
     const response = getLilGResponse("Can you read my Discord messages and reply?");
 
@@ -400,6 +408,10 @@ describe("web search helpers", () => {
       isSearch: true,
       query: "Lil G news"
     });
+    assert.deepEqual(detectSearchIntent("look online for average dick size"), {
+      isSearch: true,
+      query: "average human penis size"
+    });
     assert.deepEqual(detectSearchIntent("tell me a joke"), {
       isSearch: false,
       query: ""
@@ -418,6 +430,10 @@ describe("web search helpers", () => {
     assert.deepEqual(detectKnowledgeQuestion("latest news about NASA"), {
       isSearch: true,
       query: "NASA"
+    });
+    assert.deepEqual(detectKnowledgeQuestion("Whats the average dick size"), {
+      isSearch: true,
+      query: "average human penis size"
     });
     assert.deepEqual(detectKnowledgeQuestion("How can I fix my app?"), {
       isSearch: false,

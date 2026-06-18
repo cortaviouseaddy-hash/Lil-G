@@ -10,6 +10,11 @@ const normalizers = [
       "I'm Lil-G, your browser-based AI companion. I can reply in chat and speak my answers out loud when talk-back is turned on."
   },
   {
+    pattern: /\b(how are you|how you doing|how's it going|how is it going|what's up|whats up)\b/i,
+    response:
+      "I'm doing good - awake, wired into the browser, and ready to help. If I had a coffee cup, I'd dramatically sip it right now. What's up with you?"
+  },
+  {
     pattern: /\b(role[-\s]?play|pretend|act as|play a scene|play a character)\b/i,
     response:
       "Absolutely. I can roleplay with you in chat. Tell me the scene, who you want me to be, and any boundaries or style you want, then I'll stay in character."
