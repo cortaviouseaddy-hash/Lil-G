@@ -33,33 +33,60 @@
     </section>
 
     <main class="app-shell">
-      <section class="hero" aria-labelledby="title">
-        <p class="eyebrow">Lil-G assistant</p>
-        <h1 id="title">Talk to Lil-G and hear it respond.</h1>
-        <p>
-          Type a message, tap the mic, or start wake listening and say
-          "Hey Lil-G" if your browser supports speech recognition. Lil-G replies
-          in chat, can search the internet, answer common questions, work
-          through problems, and remember facts on this device.
-        </p>
-        <div class="install-card">
-          <strong>Install it on your phone, tablet, laptop, or desktop</strong>
-          <p>
-            Chrome, Edge, and Android can show an install button. On iPhone or
-            iPad, open this site in Safari, tap Share, then choose Add to Home
-            Screen.
-          </p>
-          <button type="button" data-install hidden>Install app</button>
-        </div>
-      </section>
+      <header class="app-bar">
+        <button
+          class="menu-button"
+          type="button"
+          data-settings-toggle
+          aria-label="Open settings"
+          aria-controls="settings-panel"
+          aria-expanded="false"
+        >☰</button>
+        <p class="app-bar-title">Lil-G</p>
+      </header>
 
       <section class="chat-card" aria-label="Lil-G chat">
-        <details class="settings-card" id="settings-panel">
-          <summary>
-            <span>Settings</span>
-            <small>Avatar, voice, memory, launch, and device controls</small>
-          </summary>
+        <div class="messages" data-chat-messages aria-live="polite"></div>
+
+        <form class="composer" data-chat-form>
+          <button class="mic-button" type="button" data-mic aria-label="Use microphone">Mic</button>
+          <label class="visually-hidden" for="chat-input">Message Lil-G</label>
+          <input
+            id="chat-input"
+            data-chat-input
+            autocomplete="off"
+            placeholder="Ask Lil-G anything..."
+            type="text"
+          />
+          <button type="submit">Send</button>
+        </form>
+
+        <p class="status" data-status role="status"></p>
+      </section>
+
+      <div class="settings-overlay" data-settings-overlay hidden></div>
+
+      <aside
+        class="settings-sidebar"
+        id="settings-panel"
+        data-settings-sidebar
+        aria-label="Settings"
+        aria-hidden="true"
+      >
+        <div class="settings-sidebar-head">
+          <strong>Settings</strong>
+          <button class="menu-button" type="button" data-settings-close aria-label="Close settings">×</button>
+        </div>
           <div class="settings-grid">
+            <div class="settings-group">
+              <strong>Background and theme</strong>
+              <p>Pick a background color for Lil-G. Your choice is saved on this device.</p>
+              <label class="select-control">
+                <span>Background color</span>
+                <select data-theme-select></select>
+              </label>
+            </div>
+
             <div class="settings-group">
               <strong>Avatar customization</strong>
               <p>
@@ -222,6 +249,16 @@
               <p class="inline-status" data-screen-state>Screen sharing is off.</p>
             </div>
 
+            <div class="settings-group">
+              <strong>Install app</strong>
+              <p>
+                Chrome, Edge, and Android can show an install button. On iPhone or
+                iPad, open this site in Safari, tap Share, then choose Add to Home
+                Screen.
+              </p>
+              <button class="secondary-button" type="button" data-install hidden>Install app</button>
+            </div>
+
             <div class="device-access-note">
               <strong>Native app and Discord access</strong>
               <p>
@@ -233,25 +270,7 @@
               </p>
             </div>
           </div>
-        </details>
-
-        <div class="messages" data-chat-messages aria-live="polite"></div>
-
-        <form class="composer" data-chat-form>
-          <button class="mic-button" type="button" data-mic aria-label="Use microphone">Mic</button>
-          <label class="visually-hidden" for="chat-input">Message Lil-G</label>
-          <input
-            id="chat-input"
-            data-chat-input
-            autocomplete="off"
-            placeholder="Ask Lil-G anything..."
-            type="text"
-          />
-          <button type="submit">Send</button>
-        </form>
-
-        <p class="status" data-status role="status"></p>
-      </section>
+      </aside>
     </main>
 
     <script type="module" src="./src/app.js"></script>

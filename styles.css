@@ -1,16 +1,95 @@
 :root {
   color-scheme: dark;
   --bg: #10131a;
+  --bg-2: #171b27;
+  --bg-glow: rgba(124, 219, 181, 0.18);
+  --card-bg: rgba(24, 29, 41, 0.88);
   --panel: #181d29;
   --panel-strong: #202738;
+  --field-bg: #0f131d;
   --text: #f7f8fb;
   --muted: #aab2c5;
   --accent: #7cdbb5;
   --accent-strong: #4cc798;
+  --accent-contrast: #07120e;
+  --border: rgba(255, 255, 255, 0.08);
+  --field-border: rgba(255, 255, 255, 0.1);
   --user: #6c7dff;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4f6fb;
+  --bg-2: #e7ecf5;
+  --bg-glow: rgba(76, 199, 152, 0.22);
+  --card-bg: rgba(255, 255, 255, 0.92);
+  --panel: #ffffff;
+  --panel-strong: #e9eef7;
+  --field-bg: #ffffff;
+  --text: #161b26;
+  --muted: #4d586e;
+  --accent: #1f9d6b;
+  --accent-strong: #167a52;
+  --accent-contrast: #ffffff;
+  --border: rgba(20, 28, 46, 0.12);
+  --field-border: rgba(20, 28, 46, 0.2);
+}
+
+:root[data-theme="ocean"] {
+  color-scheme: dark;
+  --bg: #0a1b2e;
+  --bg-2: #0f2742;
+  --bg-glow: rgba(80, 170, 255, 0.22);
+  --card-bg: rgba(15, 35, 60, 0.9);
+  --panel: #102942;
+  --panel-strong: #163655;
+  --field-bg: #0a1d31;
+  --text: #eef5ff;
+  --muted: #9fb6d4;
+  --accent: #5db4ff;
+  --accent-strong: #3a97ec;
+  --accent-contrast: #04121f;
+  --border: rgba(160, 200, 255, 0.14);
+  --field-border: rgba(160, 200, 255, 0.22);
+}
+
+:root[data-theme="forest"] {
+  color-scheme: dark;
+  --bg: #0c1f15;
+  --bg-2: #102b1d;
+  --bg-glow: rgba(120, 220, 150, 0.22);
+  --card-bg: rgba(16, 40, 28, 0.9);
+  --panel: #123524;
+  --panel-strong: #18452f;
+  --field-bg: #0a2016;
+  --text: #eefaf0;
+  --muted: #a6c8b1;
+  --accent: #5fce8a;
+  --accent-strong: #3fae6c;
+  --accent-contrast: #05140b;
+  --border: rgba(160, 255, 190, 0.14);
+  --field-border: rgba(160, 255, 190, 0.22);
+}
+
+:root[data-theme="grape"] {
+  color-scheme: dark;
+  --bg: #1a0f2b;
+  --bg-2: #241540;
+  --bg-glow: rgba(190, 130, 255, 0.24);
+  --card-bg: rgba(34, 20, 56, 0.9);
+  --panel: #271642;
+  --panel-strong: #341d57;
+  --field-bg: #190d2b;
+  --text: #f5eefe;
+  --muted: #c1abdd;
+  --accent: #b98cff;
+  --accent-strong: #9a68ec;
+  --accent-contrast: #110720;
+  --border: rgba(200, 170, 255, 0.16);
+  --field-border: rgba(200, 170, 255, 0.24);
 }
 
 * {
@@ -22,11 +101,12 @@ body {
   margin: 0;
   color: var(--text);
   background:
-    radial-gradient(circle at top left, rgba(124, 219, 181, 0.18), transparent 30rem),
-    linear-gradient(135deg, #10131a 0%, #171b27 100%);
+    radial-gradient(circle at top left, var(--bg-glow), transparent 30rem),
+    linear-gradient(135deg, var(--bg) 0%, var(--bg-2) 100%);
 }
 
-body.has-startup-open {
+body.has-startup-open,
+body.has-settings-open {
   overflow: hidden;
 }
 
@@ -40,7 +120,7 @@ textarea {
 button {
   border: 0;
   border-radius: 999px;
-  color: #07120e;
+  color: var(--accent-contrast);
   background: var(--accent);
   cursor: pointer;
   font-weight: 800;
@@ -127,66 +207,103 @@ button:disabled {
 }
 
 .app-shell {
-  display: grid;
-  grid-template-columns: minmax(17rem, 0.8fr) minmax(20rem, 1fr);
-  gap: 2rem;
-  width: min(70rem, calc(100% - 2rem));
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: min(56rem, calc(100% - 2rem));
   margin: 0 auto;
-  padding: 4rem 0;
+  padding: 1.5rem 0 3rem;
 }
 
-.hero {
-  align-self: center;
+.app-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
 }
 
-.eyebrow {
-  color: var(--accent);
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+.menu-button {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  padding: 0;
+  border-radius: 0.95rem;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--text);
+  background: var(--panel-strong);
 }
 
-h1 {
-  font-size: clamp(2.5rem, 7vw, 5.25rem);
-  line-height: 0.95;
-  margin: 0 0 1rem;
+.menu-button:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--accent-contrast);
 }
 
-.hero > p {
-  color: var(--muted);
-  font-size: 1.1rem;
-  line-height: 1.6;
+.app-bar-title {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
 }
 
-.install-card {
-  margin-top: 1.5rem;
-  border: 1px solid rgba(124, 219, 181, 0.22);
-  border-radius: 1.25rem;
-  background: rgba(124, 219, 181, 0.08);
-  padding: 1rem;
-}
-
-.install-card strong {
-  display: block;
-  color: var(--accent);
-  margin-bottom: 0.4rem;
-}
-
-.install-card p {
-  color: var(--muted);
-  line-height: 1.5;
-  margin: 0 0 0.85rem;
-}
-
-.install-card button[hidden] {
+button[data-install][hidden] {
   display: none;
+}
+
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+
+.settings-overlay[hidden] {
+  display: none;
+}
+
+.settings-sidebar {
+  position: fixed;
+  z-index: 20;
+  top: 0;
+  left: 0;
+  width: min(28rem, 92vw);
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+  transform: translateX(-100%);
+  transition: transform 240ms ease;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  box-shadow: 0 0 4rem rgba(0, 0, 0, 0.45);
+  padding: 1rem 1.1rem 2rem;
+}
+
+.settings-sidebar.is-open {
+  transform: translateX(0);
+}
+
+.settings-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.settings-sidebar-head strong {
+  color: var(--accent);
+  font-size: 1.2rem;
 }
 
 .avatar-preview {
   display: grid;
   min-height: 16rem;
   place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
   border-radius: 1rem;
   background:
     radial-gradient(circle at 50% 15%, rgba(255, 255, 255, 0.16), transparent 8rem),
@@ -536,9 +653,9 @@ h1 {
   min-height: 42rem;
   overflow: hidden;
   flex-direction: column;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
   border-radius: 2rem;
-  background: rgba(24, 29, 41, 0.88);
+  background: var(--card-bg);
   box-shadow: 0 2rem 6rem rgba(0, 0, 0, 0.28);
 }
 
@@ -547,7 +664,7 @@ h1 {
   align-items: center;
   gap: 0.75rem;
   padding: 1rem;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(127, 127, 127, 0.05);
 }
 
 .toggle {
@@ -620,10 +737,8 @@ h1 {
 
 .settings-grid {
   display: grid;
-  gap: 1rem;
-  max-height: min(32rem, 70vh);
-  overflow-y: auto;
-  padding-top: 0.9rem;
+  gap: 1.25rem;
+  padding-top: 0.4rem;
 }
 
 .settings-group {
@@ -689,10 +804,10 @@ h1 {
 .select-control select,
 .text-area-control textarea {
   width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--field-border);
   border-radius: 0.9rem;
   color: var(--text);
-  background: #0f131d;
+  background: var(--field-bg);
   outline: none;
   padding: 0.75rem 0.9rem;
 }
@@ -739,9 +854,9 @@ h1 {
 }
 
 .device-access-note {
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
   border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.035);
+  background: rgba(127, 127, 127, 0.06);
   padding: 0.85rem;
 }
 
@@ -804,16 +919,16 @@ h1 {
 }
 
 .composer {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--border);
 }
 
 .composer input {
   width: 100%;
   min-width: 0;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--field-border);
   border-radius: 999px;
   color: var(--text);
-  background: #0f131d;
+  background: var(--field-bg);
   outline: none;
   padding: 0.85rem 1rem;
 }
@@ -846,8 +961,7 @@ h1 {
 
 @media (max-width: 760px) {
   .app-shell {
-    grid-template-columns: 1fr;
-    padding: 2rem 0;
+    padding: 1rem 0 2rem;
   }
 
   .chat-card {

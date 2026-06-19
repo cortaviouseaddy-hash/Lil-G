@@ -49,6 +49,19 @@ const defaultReplySettings = {
   length: "medium"
 };
 
+const THEME_SETTINGS_STORAGE_KEY = "lil-g-theme-settings-v1";
+const themeOptions = [
+  { id: "midnight", label: "Midnight Black (default)" },
+  { id: "light", label: "Daylight White" },
+  { id: "ocean", label: "Ocean Blue" },
+  { id: "forest", label: "Forest Green" },
+  { id: "grape", label: "Grape Purple" }
+];
+const themeIds = themeOptions.map((option) => option.id);
+const defaultThemeSettings = {
+  theme: "midnight"
+};
+
 const messages = [
   createAssistantMessage(
     "What's up? I'm Lil-G. I can talk back, search the internet, and remember facts on this device. Try \"search the internet for AI news\" or \"remember that I like basketball.\""
@@ -87,7 +100,11 @@ const elements = {
   startup: document.querySelector("[data-startup-screen]"),
   startCustomizing: document.querySelector("[data-start-customizing]"),
   skipStartup: document.querySelector("[data-skip-startup]"),
-  settingsPanel: document.querySelector("#settings-panel"),
+  settingsSidebar: document.querySelector("[data-settings-sidebar]"),
+  settingsToggle: document.querySelector("[data-settings-toggle]"),
+  settingsClose: document.querySelector("[data-settings-close]"),
+  settingsOverlay: document.querySelector("[data-settings-overlay]"),
+  themeSelect: document.querySelector("[data-theme-select]"),
   avatarFigure: document.querySelector("[data-avatar-figure]"),
   avatarSummary: document.querySelector("[data-avatar-summary]"),
   avatarOptionControls: document.querySelectorAll("[data-avatar-options]"),
@@ -103,12 +120,16 @@ let deferredInstallPrompt;
 let memories = loadMemories();
 let voiceSettings = loadVoiceSettings();
 let replySettings = loadReplySettings();
+let themeSettings = loadThemeSettings();
 let profile = loadProfile();
 let avatarSettings = loadAvatarSettings();
 let availableVoices = [];
 let screenShareStream;
 
+applyTheme(themeSettings.theme);
 setupStartupIntro();
+setupSettingsSidebar();
+setupThemeSettings();
 renderMessages();
 renderMemories();
 setupAvatarCustomization();
@@ -583,8 +604,7 @@ function setupStartupIntro() {
 
   elements.startCustomizing.addEventListener("click", () => {
     hideStartupIntro();
-    elements.settingsPanel.open = true;
-    elements.settingsPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+    openSettings();
     setStatus("Settings opened. Use the dropdowns to customize Lil-G.");
   });
 
@@ -597,6 +617,101 @@ function setupStartupIntro() {
 function hideStartupIntro() {
   elements.startup.classList.add("is-hidden");
   document.body.classList.remove("has-startup-open");
+}
+
+function setupSettingsSidebar() {
+  elements.settingsToggle.addEventListener("click", () => {
+    if (elements.settingsSidebar.classList.contains("is-open")) {
+      closeSettings();
+    } else {
+      openSettings();
+    }
+  });
+
+  elements.settingsClose.addEventListener("click", closeSettings);
+  elements.settingsOverlay.addEventListener("click", closeSettings);
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && elements.settingsSidebar.classList.contains("is-open")) {
+      closeSettings();
+    }
+  });
+}
+
+function openSettings() {
+  elements.settingsSidebar.classList.add("is-open");
+  elements.settingsSidebar.setAttribute("aria-hidden", "false");
+  elements.settingsToggle.setAttribute("aria-expanded", "true");
+  elements.settingsOverlay.hidden = false;
+  document.body.classList.add("has-settings-open");
+}
+
+function closeSettings() {
+  elements.settingsSidebar.classList.remove("is-open");
+  elements.settingsSidebar.setAttribute("aria-hidden", "true");
+  elements.settingsToggle.setAttribute("aria-expanded", "false");
+  elements.settingsOverlay.hidden = true;
+  document.body.classList.remove("has-settings-open");
+}
+
+function setupThemeSettings() {
+  elements.themeSelect.replaceChildren(
+    ...themeOptions.map((option) => {
+      const item = document.createElement("option");
+      item.value = option.id;
+      item.textContent = option.label;
+      return item;
+    })
+  );
+
+  elements.themeSelect.value = themeSettings.theme;
+
+  elements.themeSelect.addEventListener("change", () => {
+    themeSettings = saveThemeSettings({ theme: elements.themeSelect.value });
+    applyTheme(themeSettings.theme);
+    const label = themeOptions.find((option) => option.id === themeSettings.theme)?.label ?? themeSettings.theme;
+    setStatus(`Background set to ${label}.`);
+  });
+}
+
+function applyTheme(theme) {
+  const normalizedTheme = themeIds.includes(theme) ? theme : defaultThemeSettings.theme;
+  document.documentElement.dataset.theme = normalizedTheme;
+}
+
+function loadThemeSettings(storage = globalThis.localStorage) {
+  if (!storage) {
+    return { ...defaultThemeSettings };
+  }
+
+  try {
+    const rawSettings = storage.getItem(THEME_SETTINGS_STORAGE_KEY);
+    return normalizeThemeSettings(rawSettings ? JSON.parse(rawSettings) : {});
+  } catch {
+    return { ...defaultThemeSettings };
+  }
+}
+
+function saveThemeSettings(settings, storage = globalThis.localStorage) {
+  const normalizedSettings = normalizeThemeSettings(settings);
+
+  if (!storage) {
+    return normalizedSettings;
+  }
+
+  try {
+    storage.setItem(THEME_SETTINGS_STORAGE_KEY, JSON.stringify(normalizedSettings));
+  } catch {
+    return normalizedSettings;
+  }
+
+  return normalizedSettings;
+}
+
+function normalizeThemeSettings(settings = {}) {
+  return {
+    theme: themeIds.includes(settings.theme) ? settings.theme : defaultThemeSettings.theme
+  };
 }
 
 function setupAvatarCustomization() {
