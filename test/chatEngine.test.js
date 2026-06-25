@@ -32,6 +32,13 @@ import {
   PROFILE_STORAGE_KEY,
   saveProfile
 } from "../src/profileSync.js";
+import {
+  handleRaidListInput,
+  isRaidListInput,
+  loadRaidList,
+  RAID_LIST_STORAGE_KEY,
+  saveRaidList
+} from "../src/raidList.js";
 import { speakText, stopSpeaking } from "../src/speech.js";
 import {
   createPresetSettings,
@@ -147,6 +154,77 @@ describe("app action helpers", () => {
     assert.equal(action.isAction, true);
     assert.equal(action.kind, "search");
     assert.match(action.url, /google\.com\/search/);
+  });
+});
+
+describe("raid list command helpers", () => {
+  it("starts owner-only list setup and asks for raid details", () => {
+    const result = handleRaidListInput("/list");
+
+    assert.equal(result.handled, true);
+    assert.equal(result.raidList.setupStep, "raid");
+    assert.match(result.reply, /Owner-only \/list setup started/);
+    assert.match(result.reply, /what time/i);
+  });
+
+  it("creates a queue announcement after raid and time are provided", () => {
+    const setup = handleRaidListInput("/list Mega Rayquaza");
+    const result = handleRaidListInput("8 PM", setup.raidList);
+
+    assert.equal(result.raidList.active, true);
+    assert.equal(result.raidList.raidName, "Mega Rayquaza");
+    assert.equal(result.raidList.startTime, "8 PM");
+    assert.match(result.reply, /doing a bunch of Mega Rayquaza raids back to back/);
+    assert.match(result.reply, /reply yes to this message/i);
+    assert.match(result.reply, /streaming it/i);
+  });
+
+  it("adds yes replies while preventing duplicate names", () => {
+    const list = handleRaidListInput("/list Mega Rayquaza at 8 PM").raidList;
+    const firstAdd = handleRaidListInput("/list yes Corey, Ace", list, {
+      createId: (name) => `signup-${name}`,
+      now: "2026-06-25T00:00:00.000Z"
+    });
+    const duplicateAdd = handleRaidListInput("/list yes corey", firstAdd.raidList);
+
+    assert.equal(firstAdd.raidList.signups.length, 2);
+    assert.match(firstAdd.reply, /Added Corey and Ace/);
+    assert.equal(duplicateAdd.raidList.signups.length, 2);
+    assert.match(duplicateAdd.reply, /Already in line: corey/);
+  });
+
+  it("alerts the next group and advances the line", () => {
+    const list = handleRaidListInput("/list Mega Rayquaza at 8 PM").raidList;
+    const sizedList = handleRaidListInput("/list size 2", list).raidList;
+    const withSignups = handleRaidListInput("/list yes Corey, Ace, Mia", sizedList, {
+      createId: (name) => `signup-${name}`
+    }).raidList;
+    const firstGroup = handleRaidListInput("/list next", withSignups);
+    const secondGroup = handleRaidListInput("/list done", firstGroup.raidList);
+
+    assert.equal(firstGroup.raidList.nextIndex, 2);
+    assert.match(firstGroup.reply, /Corey and Ace - it's time for Mega Rayquaza/);
+    assert.equal(secondGroup.raidList.nextIndex, 3);
+    assert.match(secondGroup.reply, /Marked the last set done/);
+    assert.match(secondGroup.reply, /Mia - it's time for Mega Rayquaza/);
+  });
+
+  it("saves and loads the raid list from local storage", () => {
+    const storage = createMemoryStorage();
+    const list = handleRaidListInput("/list Mega Rayquaza at 8 PM").raidList;
+
+    saveRaidList(list, storage);
+
+    assert.equal(storage.getItem(RAID_LIST_STORAGE_KEY).includes("Mega Rayquaza"), true);
+    assert.equal(loadRaidList(storage).raidName, "Mega Rayquaza");
+  });
+
+  it("only treats slash list commands or active setup as raid list input", () => {
+    const setup = handleRaidListInput("/list");
+
+    assert.equal(isRaidListInput("hello there"), false);
+    assert.equal(isRaidListInput("Mega Rayquaza at 8 PM", setup.raidList), true);
+    assert.equal(isRaidListInput("/list status"), true);
   });
 });
 

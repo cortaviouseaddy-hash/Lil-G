@@ -26,6 +26,12 @@ import {
   parseProfileSyncCode,
   saveProfile
 } from "./profileSync.js";
+import {
+  handleRaidListInput,
+  isRaidListInput,
+  loadRaidList,
+  saveRaidList
+} from "./raidList.js";
 import { canSpeak, speakText, stopSpeaking } from "./speech.js";
 import {
   createPresetSettings,
@@ -105,6 +111,7 @@ let voiceSettings = loadVoiceSettings();
 let replySettings = loadReplySettings();
 let profile = loadProfile();
 let avatarSettings = loadAvatarSettings();
+let raidList = loadRaidList();
 let availableVoices = [];
 let screenShareStream;
 
@@ -183,6 +190,15 @@ async function sendMessage(rawInput) {
 }
 
 async function buildAssistantReply(content) {
+  if (isRaidListInput(content, raidList)) {
+    const raidListResult = handleRaidListInput(content, raidList);
+
+    if (raidListResult.handled) {
+      raidList = saveRaidList(raidListResult.raidList);
+      return createAssistantMessage(raidListResult.reply);
+    }
+  }
+
   const avatarCommand = detectAvatarCommand(content, avatarSettings);
 
   if (avatarCommand.isAvatarCommand) {
