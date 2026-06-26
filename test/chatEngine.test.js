@@ -210,7 +210,7 @@ describe("activity list command helpers", () => {
     assert.match(firstGroup.reply, /Corey and Ace - it's your turn for Mega Rayquaza/);
     assert.match(firstGroup.reply, /You can join now/);
     assert.equal(secondGroup.raidList.nextIndex, 3);
-    assert.match(secondGroup.reply, /We are done with that Mega Rayquaza/);
+    assert.match(secondGroup.reply, /We are done with that Mega Rayquaza run/);
     assert.match(secondGroup.reply, /Mia - it's your turn for Mega Rayquaza/);
   });
 
