@@ -33,40 +33,29 @@
     </section>
 
     <main class="app-shell">
-      <section class="hero" aria-labelledby="title">
+      <section class="hero" hidden aria-hidden="true">
         <p class="eyebrow">Lil-G assistant</p>
         <h1 id="title">Talk to Lil-G and hear it respond.</h1>
         <p>
           Type a message, tap the mic, or start wake listening and say
-          "Hey Lil-G" if your browser supports speech recognition. Lil-G replies
-          in chat, can search the internet, answer common questions, work
-          through problems, and remember facts on this device.
+          "Hey Lil-G" if your browser supports speech recognition.
         </p>
         <div class="install-card">
-          <strong>Install it on your phone, tablet, laptop, or desktop</strong>
-          <p>
-            Chrome, Edge, and Android can show an install button. On iPhone or
-            iPad, open this site in Safari, tap Share, then choose Add to Home
-            Screen.
-          </p>
+          <strong>Install Lil-G</strong>
           <button type="button" data-install hidden>Install app</button>
         </div>
       </section>
 
       <section class="chat-card" aria-label="Lil-G chat">
-        <details class="settings-card" id="settings-panel">
-          <summary>
-            <span>Settings</span>
-            <small>Avatar, voice, memory, launch, and device controls</small>
-          </summary>
-          <div class="settings-grid">
+        <header class="chat-header">
+          <details class="settings-menu" id="settings-panel">
+            <summary class="settings-menu__button" aria-label="Settings">
+              <span class="settings-menu__icon" aria-hidden="true"></span>
+            </summary>
+            <div class="settings-panel">
+              <div class="settings-grid">
             <div class="settings-group">
-              <strong>Avatar customization</strong>
-              <p>
-                Build a more realistic, non-explicit AI avatar portrait from
-                dropdowns for label, color, face shape, hair, expression, body,
-                and clothes.
-              </p>
+              <strong>Avatar</strong>
 
               <div class="avatar-settings-layout">
                 <div class="avatar-preview" data-avatar-preview aria-label="Assistant avatar preview">
@@ -124,8 +113,7 @@
             </div>
 
             <div class="settings-group">
-              <strong>Voice and talk-back</strong>
-              <p>Choose a talk-back style from the dropdown. The exact system voice depends on your browser.</p>
+              <strong>Voice</strong>
               <label class="toggle">
                 <input type="checkbox" data-talk-back checked />
                 <span>Talk-back</span>
@@ -150,8 +138,12 @@
             </div>
 
             <div class="settings-group">
-              <strong>AI behavior</strong>
-              <p>Choose how much Lil-G says back when it answers or has a conversation.</p>
+              <strong>AI</strong>
+              <label class="toggle">
+                <input type="checkbox" data-self-thinking-enabled />
+                <span>Self thinking</span>
+              </label>
+              <p class="inline-status" data-self-thinking-state>Self thinking is off.</p>
               <label class="select-control">
                 <span>Response length</span>
                 <select data-reply-length>
@@ -164,22 +156,20 @@
 
             <div class="settings-group">
               <strong>Memory</strong>
-              <p>Say "remember that..." and Lil-G will save it on this device.</p>
               <button class="secondary-button" type="button" data-clear-memory>Clear memory</button>
               <ul class="memory-list" data-memory-list></ul>
             </div>
 
             <div class="settings-group">
-              <strong>Profile sync</strong>
-              <p>
-                Save a local profile name, export a sync code, and import that
-                code on another installed copy so Lil-G recognizes the same
-                memories, voice settings, and avatar settings there too.
-              </p>
+              <strong>Profile</strong>
               <div class="profile-sync-grid">
                 <label>
                   <span>Profile name</span>
                   <input data-profile-name autocomplete="name" placeholder="Your name or handle" type="text" />
+                </label>
+                <label>
+                  <span>Assistant name</span>
+                  <input data-assistant-name autocomplete="off" placeholder="Lil-G" type="text" />
                 </label>
                 <button class="secondary-button" type="button" data-save-profile>Save profile</button>
                 <button class="secondary-button" type="button" data-export-profile>Export sync code</button>
@@ -197,8 +187,7 @@
             </div>
 
             <div class="settings-group">
-              <strong>Quick launch</strong>
-              <p>Choose a supported web app or browser page, then open it in a new tab.</p>
+              <strong>Launch</strong>
               <div class="dropdown-action">
                 <label class="select-control">
                   <span>Launch target</span>
@@ -208,13 +197,25 @@
               </div>
             </div>
 
+            <div class="settings-group" data-screen-control-settings>
+              <strong>Screen control</strong>
+              <label class="toggle">
+                <input type="checkbox" data-screen-control-enabled />
+                <span>Voice screen control</span>
+              </label>
+              <label>
+                <span>Companion address</span>
+                <input data-companion-url type="url" value="ws://127.0.0.1:8765" />
+              </label>
+              <div class="screen-controls">
+                <button class="secondary-button" type="button" data-companion-connect>Connect companion</button>
+                <button class="secondary-button" type="button" data-companion-disconnect>Disconnect</button>
+              </div>
+              <p class="inline-status" data-companion-state>Voice screen control is off.</p>
+            </div>
+
             <div class="settings-group">
-              <strong>Screen context</strong>
-              <p>
-                Share your screen when you want Lil-G to know you are looking at
-                something. Full screen reading still needs a future OCR or vision
-                service, so paste text when you want exact help.
-              </p>
+              <strong>Screen share</strong>
               <div class="screen-controls">
                 <button class="secondary-button" type="button" data-screen-share>Share screen</button>
                 <button class="secondary-button" type="button" data-screen-stop>Stop sharing</button>
@@ -222,18 +223,38 @@
               <p class="inline-status" data-screen-state>Screen sharing is off.</p>
             </div>
 
-            <div class="device-access-note">
-              <strong>Native app and Discord access</strong>
-              <p>
-                Lil-G can listen while this app is open and the browser allows the
-                microphone. Reading Discord directly, sending messages, controlling
-                other apps, showing system pop-ups, or listening after the app is
-                closed requires a native companion app, approved Discord bot or
-                OAuth integration, and operating-system permissions.
-              </p>
+            <div class="settings-group">
+              <strong>Floating orb</strong>
+              <label class="toggle">
+                <input type="checkbox" data-floating-orb-enabled />
+                <span>Floating orb mode</span>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" data-floating-orb-auto-wake checked />
+                <span>Keep wake listening when minimized</span>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" data-floating-orb-respond-voice checked />
+                <span>Answer when I say the assistant name</span>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" data-floating-orb-pip checked />
+                <span>Float above other windows on Chrome or Edge</span>
+              </label>
+              <p class="inline-status" data-floating-orb-state>Floating orb mode is off.</p>
             </div>
-          </div>
-        </details>
+
+            <div class="settings-group settings-group--compact">
+              <button type="button" data-install hidden>Install app</button>
+            </div>
+              </div>
+            </div>
+          </details>
+
+          <button class="secondary-button chat-header__action" type="button" data-minimize-orb hidden>
+            Minimize
+          </button>
+        </header>
 
         <div class="messages" data-chat-messages aria-live="polite"></div>
 
@@ -253,6 +274,18 @@
         <p class="status" data-status role="status"></p>
       </section>
     </main>
+
+    <aside class="floating-orb-widget" data-floating-orb hidden aria-label="Lil-G floating orb">
+      <div class="floating-orb-widget__panel" data-floating-orb-panel hidden>
+        <p class="floating-orb-widget__status" data-floating-orb-status>Lil-G is ready.</p>
+        <div class="floating-orb-widget__actions">
+          <button class="secondary-button" type="button" data-floating-orb-restore>Open Lil-G</button>
+          <button class="secondary-button" type="button" data-floating-orb-mic>Mic</button>
+          <button class="secondary-button" type="button" data-floating-orb-wake>Wake</button>
+        </div>
+      </div>
+      <button class="floating-orb-widget__orb" type="button" data-floating-orb-button aria-label="Lil-G floating orb"></button>
+    </aside>
 
     <script type="module" src="./src/app.js"></script>
   </body>

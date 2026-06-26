@@ -2,7 +2,8 @@ export const PROFILE_STORAGE_KEY = "lil-g-profile-v1";
 export const PROFILE_SYNC_VERSION = 1;
 
 const defaultProfile = {
-  displayName: ""
+  displayName: "",
+  assistantName: "Lil-G"
 };
 
 export function loadProfile(storage = globalThis.localStorage) {
@@ -34,7 +35,19 @@ export function saveProfile(profile, storage = globalThis.localStorage) {
   return normalizedProfile;
 }
 
-export function createProfileSyncCode({ profile, memories, voiceSettings, replySettings, avatarSettings }, options = {}) {
+export function createProfileSyncCode(
+  {
+    profile,
+    memories,
+    voiceSettings,
+    replySettings,
+    avatarSettings,
+    screenControlSettings,
+    thinkingSettings,
+    floatingOrbSettings
+  },
+  options = {}
+) {
   const payload = {
     version: PROFILE_SYNC_VERSION,
     createdAt: options.createdAt ?? new Date().toISOString(),
@@ -42,7 +55,10 @@ export function createProfileSyncCode({ profile, memories, voiceSettings, replyS
     memories: Array.isArray(memories) ? memories : [],
     voiceSettings: voiceSettings ?? {},
     replySettings: replySettings ?? {},
-    avatarSettings: avatarSettings ?? {}
+    avatarSettings: avatarSettings ?? {},
+    screenControlSettings: screenControlSettings ?? {},
+    thinkingSettings: thinkingSettings ?? {},
+    floatingOrbSettings: floatingOrbSettings ?? {}
   };
 
   return encodePayload(payload);
@@ -63,7 +79,10 @@ export function parseProfileSyncCode(code) {
       memories: Array.isArray(payload.memories) ? payload.memories.filter(isValidMemory) : [],
       voiceSettings: payload.voiceSettings ?? {},
       replySettings: payload.replySettings ?? {},
-      avatarSettings: payload.avatarSettings ?? {}
+      avatarSettings: payload.avatarSettings ?? {},
+      screenControlSettings: payload.screenControlSettings ?? {},
+      thinkingSettings: payload.thinkingSettings ?? {},
+      floatingOrbSettings: payload.floatingOrbSettings ?? {}
     };
   } catch (error) {
     throw new Error("That profile sync code is not valid.");
@@ -71,8 +90,11 @@ export function parseProfileSyncCode(code) {
 }
 
 export function normalizeProfile(profile = {}) {
+  const assistantName = cleanProfileValue(profile.assistantName);
+
   return {
-    displayName: cleanProfileValue(profile.displayName)
+    displayName: cleanProfileValue(profile.displayName),
+    assistantName: assistantName || "Lil-G"
   };
 }
 

@@ -20,9 +20,24 @@ const normalizers = [
       "I can help write Discord replies if you paste the messages here. This browser app cannot directly read your Discord account or send messages for you without an approved Discord bot, OAuth flow, or native companion app permission."
   },
   {
+    pattern: /\b(floating orb|minimize|minimized mode|background mode)\b/i,
+    response:
+      "Turn on Floating orb mode in Settings, pick your avatar glow color, then tap Minimize to orb. Lil-G stays awake in the background as a draggable orb you can move anywhere."
+  },
+  {
+    pattern: /\b(self thinking|think through|show your thinking|reasoning)\b/i,
+    response:
+      "Turn on Self thinking in Settings under AI behavior. When it is on, I show my reasoning steps in a collapsible block before my final answer."
+  },
+  {
     pattern: /\b(what can you do|features|capabilities)\b/i,
     response:
-      "I can answer back, talk out loud, search the internet for factual questions, remember local profile facts, brainstorm ideas, explain things, and help break problems into steps."
+      "I can answer back, talk out loud, search the internet, remember local profile facts, think through answers when self thinking is on, and with the Lil-G desktop companion connected I can look at your screen and follow voice commands to click, tap, and type where you tell me."
+  },
+  {
+    pattern: /\b(screen control|click for me|type for me|voice click|voice tap)\b/i,
+    response:
+      'Connect the Lil-G desktop companion, then say commands like "look at my screen", "click on Submit", "tap Settings 3 times", or "type hello in the search box".'
   },
   {
     pattern: /\b(sad|upset|angry|mad|lonely|stressed|anxious)\b/i,

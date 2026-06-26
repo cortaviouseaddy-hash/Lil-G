@@ -35,6 +35,33 @@ import {
   saveVoiceSettings,
   voicePresets
 } from "./voiceSettings.js";
+import { buildThinkingTrace, formatThinkingTrace, shouldShowThinkingForReply } from "./thinkingEngine.js";
+import {
+  loadThinkingSettings,
+  saveThinkingSettings
+} from "./thinkingSettings.js";
+import { createCompanionClient } from "./companionClient.js";
+import {
+  detectScreenCommand,
+  formatCompanionUnavailableReply,
+  formatScreenCommandReply,
+  formatScreenControlDisabledReply,
+  formatScreenControlHelp
+} from "./screenCommands.js";
+import {
+  loadScreenControlSettings,
+  saveScreenControlSettings
+} from "./screenControlSettings.js";
+import {
+  detectAssistantRenameCommand,
+  formatAssistantRenameReply,
+  formatOrbWakeHint,
+  formatWakePhraseHint,
+  mentionsAssistantName,
+  stripAssistantNamePrefix
+} from "./assistantName.js";
+import { createFloatingOrbController } from "./floatingOrb.js";
+import { saveFloatingOrbSettings } from "./floatingOrbSettings.js";
 import { detectWakePhrase } from "./wakeWord.js";
 import {
   createWebSearchUrl,
@@ -73,7 +100,10 @@ const elements = {
   voiceRate: document.querySelector("[data-voice-rate]"),
   voiceRateValue: document.querySelector("[data-voice-rate-value]"),
   replyLength: document.querySelector("[data-reply-length]"),
+  selfThinkingEnabled: document.querySelector("[data-self-thinking-enabled]"),
+  selfThinkingState: document.querySelector("[data-self-thinking-state]"),
   profileName: document.querySelector("[data-profile-name]"),
+  assistantName: document.querySelector("[data-assistant-name]"),
   saveProfile: document.querySelector("[data-save-profile]"),
   exportProfile: document.querySelector("[data-export-profile]"),
   copyProfile: document.querySelector("[data-copy-profile]"),
@@ -81,6 +111,12 @@ const elements = {
   importProfileCode: document.querySelector("[data-import-profile-code]"),
   importProfile: document.querySelector("[data-import-profile]"),
   quickLaunch: document.querySelector("[data-quick-launch]"),
+  companionUrl: document.querySelector("[data-companion-url]"),
+  companionConnect: document.querySelector("[data-companion-connect]"),
+  companionDisconnect: document.querySelector("[data-companion-disconnect]"),
+  companionState: document.querySelector("[data-companion-state]"),
+  screenControlEnabled: document.querySelector("[data-screen-control-enabled]"),
+  screenControlSettingsGroup: document.querySelector("[data-screen-control-settings]"),
   screenShare: document.querySelector("[data-screen-share]"),
   screenStop: document.querySelector("[data-screen-stop]"),
   screenState: document.querySelector("[data-screen-state]"),
@@ -103,10 +139,14 @@ let deferredInstallPrompt;
 let memories = loadMemories();
 let voiceSettings = loadVoiceSettings();
 let replySettings = loadReplySettings();
+let thinkingSettings = loadThinkingSettings();
 let profile = loadProfile();
 let avatarSettings = loadAvatarSettings();
+let screenControlSettings = loadScreenControlSettings();
 let availableVoices = [];
 let screenShareStream;
+const companionClient = createCompanionClient();
+let floatingOrb;
 
 setupStartupIntro();
 renderMessages();
@@ -114,9 +154,12 @@ renderMemories();
 setupAvatarCustomization();
 setupVoiceSettings();
 setupReplySettings();
+setupThinkingSettings();
 setupProfileSync();
 setupQuickLaunch();
 setupScreenContext();
+setupCompanionControl();
+setupFloatingOrb();
 updateStatus();
 setupSpeechRecognition();
 setupAppInstall();
@@ -176,13 +219,35 @@ async function sendMessage(rawInput) {
   elements.input.value = "";
   renderMessages();
 
+  if (thinkingSettings.enabled) {
+    setStatus("Lil-G is thinking...");
+    floatingOrb?.setActivityState("thinking");
+  }
+
   const assistantMessage = await buildAssistantReply(content);
+  floatingOrb?.setActivityState(isWakeListening || isRecognitionActive ? "listening" : "idle");
   messages.push(assistantMessage);
   renderMessages();
   speakAssistantReply(assistantMessage);
+
+  if (floatingOrb?.isMinimized()) {
+    floatingOrb.notify(assistantMessage.content);
+  }
 }
 
 async function buildAssistantReply(content) {
+  const renameCommand = detectAssistantRenameCommand(content);
+
+  if (renameCommand.isRename) {
+    profile = saveProfile({
+      ...profile,
+      assistantName: renameCommand.name
+    });
+    elements.assistantName.value = profile.assistantName;
+    updateAssistantIdentity();
+    return createAssistantMessage(formatAssistantRenameReply(renameCommand.name));
+  }
+
   const avatarCommand = detectAvatarCommand(content, avatarSettings);
 
   if (avatarCommand.isAvatarCommand) {
@@ -228,6 +293,19 @@ async function buildAssistantReply(content) {
     renderMemories();
   }
 
+  const screenCommand = detectScreenCommand(content);
+
+  if (screenCommand.isScreenCommand) {
+    if (!screenControlSettings.enabled) {
+      return createAssistantMessage(
+        withSavedMemoryText(formatScreenControlDisabledReply(), automaticMemoryResult.added)
+      );
+    }
+
+    const screenReply = await handleScreenCommand(screenCommand);
+    return createAssistantMessage(withSavedMemoryText(screenReply, automaticMemoryResult.added));
+  }
+
   const screenReply = await handleScreenContextRequest(content);
 
   if (screenReply) {
@@ -251,13 +329,13 @@ async function buildAssistantReply(content) {
   const searchIntent = detectSearchIntent(content);
 
   if (searchIntent.isSearch) {
-    return searchAndReply(searchIntent.query);
+    return searchAndReply(searchIntent.query, { userMessage: content });
   }
 
   const knowledgeQuestion = detectKnowledgeQuestion(content);
 
   if (knowledgeQuestion.isSearch) {
-    return searchAndReply(knowledgeQuestion.query, { automatic: true });
+    return searchAndReply(knowledgeQuestion.query, { automatic: true, userMessage: content });
   }
 
   const relevantMemories = getRelevantMemoryText(content, memories);
@@ -266,7 +344,26 @@ async function buildAssistantReply(content) {
     replyLength: replySettings.length
   });
 
-  return createAssistantMessage(withSavedMemoryText(reply, automaticMemoryResult.added));
+  return withThinking(
+    createAssistantMessage(withSavedMemoryText(reply, automaticMemoryResult.added)),
+    content,
+    {
+      relevantMemories,
+      replyLength: replySettings.length
+    }
+  );
+}
+
+function withThinking(message, content, context = {}, options = {}) {
+  if (!thinkingSettings.enabled || !shouldShowThinkingForReply(options)) {
+    return message;
+  }
+
+  const trace = buildThinkingTrace(content, messages, context);
+  return {
+    ...message,
+    thinking: formatThinkingTrace(trace)
+  };
 }
 
 async function searchAndReply(query, options = {}) {
@@ -274,23 +371,37 @@ async function searchAndReply(query, options = {}) {
 
   try {
     const searchResult = await searchInternet(query);
-    return createAssistantMessage(formatSearchReply(searchResult, {
-      automatic: Boolean(options.automatic),
-      replyLength: replySettings.length
-    }), {
-      sources: createSources(searchResult)
-    });
+    return withThinking(
+      createAssistantMessage(formatSearchReply(searchResult, {
+        automatic: Boolean(options.automatic),
+        replyLength: replySettings.length
+      }), {
+        sources: createSources(searchResult)
+      }),
+      options.userMessage ?? query,
+      {
+        willSearch: true,
+        replyLength: replySettings.length
+      }
+    );
   } catch {
     const webSearchUrl = createWebSearchUrl(query);
-    return createAssistantMessage(
-      `I tried to search the internet for "${query}", but I could not reach the search service from this browser. You can open a web search here: ${webSearchUrl}`,
+    return withThinking(
+      createAssistantMessage(
+        `I tried to search the internet for "${query}", but I could not reach the search service from this browser. You can open a web search here: ${webSearchUrl}`,
+        {
+          sources: [
+            {
+              title: `Search the web for ${query}`,
+              url: webSearchUrl
+            }
+          ]
+        }
+      ),
+      options.userMessage ?? query,
       {
-        sources: [
-          {
-            title: `Search the web for ${query}`,
-            url: webSearchUrl
-          }
-        ]
+        willSearch: true,
+        replyLength: replySettings.length
       }
     );
   }
@@ -299,9 +410,11 @@ async function searchAndReply(query, options = {}) {
 function speakAssistantReply(assistantMessage) {
   if (elements.talkBack.checked) {
     const preset = getVoicePreset(voiceSettings.presetId);
+    floatingOrb?.setActivityState("speaking");
     const didSpeak = speakText(assistantMessage.content, {
       voice: createVoiceOptions(voiceSettings, availableVoices)
     });
+    floatingOrb?.setActivityState(isWakeListening || isRecognitionActive ? "listening" : "idle");
     setStatus(
       didSpeak
         ? `Lil-G answered with the ${preset.label} voice.`
@@ -330,7 +443,8 @@ function createSources(searchResult) {
 }
 
 function acknowledgeWakePhrase() {
-  const reply = "I'm listening. What do you want to ask me?";
+  const name = getAssistantName();
+  const reply = `I'm listening. What do you want to ask me, ${profile.displayName || "friend"}?`;
   messages.push(createAssistantMessage(reply));
   renderMessages();
 
@@ -340,7 +454,8 @@ function acknowledgeWakePhrase() {
     });
   }
 
-  setStatus("Wake phrase heard. Say your message now.");
+  setStatus(`${formatWakePhraseHint(name)} Say your message now.`);
+  floatingOrb?.notify(`Listening for your next message to ${name}.`);
 }
 
 function formatSavedMemoryText(addedMemories) {
@@ -365,12 +480,18 @@ function renderMessages() {
       item.className = `message message--${message.role}`;
 
       const label = document.createElement("strong");
-      label.textContent = message.role === "assistant" ? "Lil-G" : "You";
+      label.textContent = message.role === "assistant" ? getAssistantName() : "You";
 
       const body = document.createElement("p");
       body.textContent = message.content;
 
-      item.append(label, body);
+      item.append(label);
+
+      if (message.thinking) {
+        item.append(createThinkingBlock(message.thinking));
+      }
+
+      item.append(body);
 
       if (message.sources?.length) {
         item.append(createSourceList(message.sources));
@@ -381,6 +502,22 @@ function renderMessages() {
   );
 
   elements.messages.scrollTop = elements.messages.scrollHeight;
+}
+
+function createThinkingBlock(thinking) {
+  const details = document.createElement("details");
+  details.className = "thinking-block";
+  details.open = thinkingSettings.enabled;
+
+  const summary = document.createElement("summary");
+  summary.textContent = "Self thinking";
+
+  const body = document.createElement("pre");
+  body.className = "thinking-block__content";
+  body.textContent = thinking;
+
+  details.append(summary, body);
+  return details;
 }
 
 function createSourceList(sources) {
@@ -434,13 +571,15 @@ function setupSpeechRecognition() {
   recognition.addEventListener("start", () => {
     isRecognitionActive = true;
     elements.mic.classList.add("is-listening");
-    setStatus(isWakeListening ? 'Wake listening... Say "Hey Lil-G".' : "Listening...");
+    floatingOrb?.setActivityState("listening");
+    setStatus(isWakeListening ? formatWakePhraseHint(getAssistantName()) : "Listening...");
   });
 
   recognition.addEventListener("end", () => {
     isRecognitionActive = false;
     elements.mic.classList.remove("is-listening");
     elements.wake.classList.toggle("is-listening", isWakeListening);
+    floatingOrb?.setActivityState(isWakeListening ? "listening" : "idle");
 
     if (isWakeListening) {
       window.setTimeout(() => startRecognition({ continuous: true }), 250);
@@ -464,7 +603,7 @@ function setupSpeechRecognition() {
 
     setStatus(
       isWakeListening
-        ? 'Still wake listening... Say "Hey Lil-G" when you want me.'
+        ? formatWakePhraseHint(getAssistantName())
         : "I couldn't hear that clearly. Try typing or tap the mic again."
     );
   });
@@ -516,15 +655,47 @@ function setupReplySettings() {
   });
 }
 
+function setupThinkingSettings() {
+  syncThinkingControls();
+
+  elements.selfThinkingEnabled.addEventListener("change", () => {
+    thinkingSettings = saveThinkingSettings({
+      enabled: elements.selfThinkingEnabled.checked
+    });
+    syncThinkingControls();
+    setStatus(
+      thinkingSettings.enabled
+        ? "Self thinking is on. Lil-G will show its reasoning before answers."
+        : "Self thinking is off."
+    );
+  });
+}
+
+function syncThinkingControls() {
+  elements.selfThinkingEnabled.checked = thinkingSettings.enabled;
+  elements.selfThinkingState.textContent = thinkingSettings.enabled
+    ? "Self thinking is on. Lil-G will reason through harder answers before replying."
+    : "Self thinking is off.";
+}
+
 function setupProfileSync() {
   elements.profileName.value = profile.displayName;
+  elements.assistantName.value = profile.assistantName;
+  updateAssistantIdentity();
 
   elements.saveProfile.addEventListener("click", () => {
     profile = saveProfile({
-      displayName: elements.profileName.value
+      displayName: elements.profileName.value,
+      assistantName: elements.assistantName.value
     });
     elements.profileName.value = profile.displayName;
-    setStatus(profile.displayName ? `Profile saved for ${profile.displayName}.` : "Profile name cleared.");
+    elements.assistantName.value = profile.assistantName;
+    updateAssistantIdentity();
+    setStatus(
+      profile.assistantName
+        ? `Profile saved. I will answer to "${profile.assistantName}".`
+        : "Profile name cleared."
+    );
   });
 
   elements.exportProfile.addEventListener("click", () => {
@@ -533,7 +704,10 @@ function setupProfileSync() {
       memories,
       voiceSettings,
       replySettings,
-      avatarSettings
+      avatarSettings,
+      screenControlSettings,
+      thinkingSettings,
+      floatingOrbSettings: floatingOrb?.getSettings() ?? {}
     });
     setStatus("Profile sync code created. Paste it on another device to connect this profile.");
   });
@@ -545,7 +719,10 @@ function setupProfileSync() {
         memories,
         voiceSettings,
         replySettings,
-        avatarSettings
+        avatarSettings,
+        screenControlSettings,
+        thinkingSettings,
+        floatingOrbSettings: floatingOrb?.getSettings() ?? {}
       });
     }
 
@@ -565,12 +742,20 @@ function setupProfileSync() {
       voiceSettings = saveVoiceSettings(payload.voiceSettings);
       replySettings = saveReplySettings(payload.replySettings);
       avatarSettings = saveAvatarSettings(payload.avatarSettings);
+      screenControlSettings = saveScreenControlSettings(payload.screenControlSettings);
+      thinkingSettings = saveThinkingSettings(payload.thinkingSettings);
+      saveFloatingOrbSettings(payload.floatingOrbSettings);
       elements.profileName.value = profile.displayName;
+      elements.assistantName.value = profile.assistantName;
       elements.importProfileCode.value = "";
       renderMemories();
       renderAvatar();
       syncVoiceControls();
       syncReplyControls();
+      syncThinkingControls();
+      floatingOrb?.syncSettingsControls();
+      updateAssistantIdentity();
+      syncScreenControlSettings();
       setStatus("Profile imported on this device.");
     } catch (error) {
       setStatus(error.message);
@@ -631,11 +816,59 @@ function renderAvatar() {
   elements.avatarFigure.dataset.body = avatar.body;
   elements.avatarFigure.dataset.clothes = avatar.clothes;
   elements.avatarSummary.textContent = `Current avatar: ${formatAvatarSummary(avatar)}.`;
+  floatingOrb?.applyAvatarColor(avatar.color);
 
   for (const control of elements.avatarOptionControls) {
     const key = control.dataset.avatarOptions;
     control.value = avatar[key];
   }
+}
+
+function setupFloatingOrb() {
+  floatingOrb = createFloatingOrbController({
+    initialColor: avatarSettings.color,
+    getAssistantName,
+    getOrbWakeHint: () => formatOrbWakeHint(getAssistantName()),
+    onAutoWake: () => {
+      if (!isWakeListening) {
+        isWakeListening = true;
+        isAwaitingWakeCommand = false;
+        updateWakeButton();
+        startRecognition({ continuous: true });
+        setStatus(`${formatOrbWakeHint(getAssistantName())} Wake listening is on.`);
+      }
+    },
+    onMic: () => {
+      isWakeListening = false;
+      isAwaitingWakeCommand = false;
+      updateWakeButton();
+      startRecognition();
+    },
+    onWake: () => {
+      isWakeListening = !isWakeListening;
+      isAwaitingWakeCommand = false;
+      updateWakeButton();
+
+      if (isWakeListening) {
+        startRecognition({ continuous: true });
+        setStatus(formatWakePhraseHint(getAssistantName()));
+        return;
+      }
+
+      recognition?.stop();
+      setStatus("Wake listening stopped.");
+    },
+    onRestore: () => {
+      setStatus("Lil-G is ready.");
+    },
+    onStatus: (message) => {
+      if (floatingOrb?.isMinimized()) {
+        setStatus(message);
+      }
+    }
+  });
+
+  floatingOrb.syncSettingsControls();
 }
 
 function setupQuickLaunch() {
@@ -671,6 +904,122 @@ function formatChangedAvatarKeys(keys) {
 
 function formatAvatarOptionLabel(value) {
   return value.replace(/-/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function setupCompanionControl() {
+  elements.companionUrl.value = companionClient.getUrl();
+  syncScreenControlSettings();
+
+  elements.screenControlEnabled.addEventListener("change", () => {
+    screenControlSettings = saveScreenControlSettings({
+      enabled: elements.screenControlEnabled.checked
+    });
+    syncScreenControlSettings();
+
+    if (!screenControlSettings.enabled) {
+      companionClient.disconnect();
+      setStatus("Voice screen control turned off.");
+      return;
+    }
+
+    setStatus("Voice screen control turned on. Connect the desktop companion to use it.");
+  });
+
+  companionClient.subscribe((status) => {
+    elements.companionState.textContent = formatCompanionState(status);
+    syncScreenControlSettings(status);
+  });
+
+  elements.companionConnect.addEventListener("click", async () => {
+    if (!screenControlSettings.enabled) {
+      setStatus("Turn on voice screen control in Settings first.");
+      return;
+    }
+
+    const url = elements.companionUrl.value.trim();
+
+    if (!url) {
+      setStatus("Enter a companion WebSocket address first.");
+      return;
+    }
+
+    companionClient.saveUrl(url);
+    setStatus("Connecting to the Lil-G desktop companion...");
+    const status = await companionClient.connect(url);
+    setStatus(
+      status.connected
+        ? "Companion connected. You can now use voice click, tap, and type commands."
+        : "Could not connect to the companion. Start it with python companion/lilg_companion.py."
+    );
+  });
+
+  elements.companionDisconnect.addEventListener("click", () => {
+    companionClient.disconnect();
+    setStatus("Companion disconnected.");
+  });
+}
+
+function syncScreenControlSettings(companionStatus = companionClient.getStatus()) {
+  const enabled = screenControlSettings.enabled;
+  elements.screenControlEnabled.checked = enabled;
+  elements.companionUrl.disabled = !enabled;
+  elements.companionConnect.disabled = !enabled || companionStatus.state === "connecting";
+  elements.companionDisconnect.disabled = !enabled || !companionStatus.connected;
+  elements.screenControlSettingsGroup.classList.toggle("is-disabled", !enabled);
+  elements.companionState.textContent = formatCompanionState(companionStatus);
+}
+
+function formatCompanionState(status) {
+  if (!screenControlSettings.enabled) {
+    return "Voice screen control is off. Turn it on above to connect the companion.";
+  }
+
+  if (status.state === "connected") {
+    return `Companion connected at ${status.url}.`;
+  }
+
+  if (status.state === "connecting") {
+    return "Connecting to companion...";
+  }
+
+  if (status.state === "unsupported") {
+    return "This browser cannot open a companion WebSocket connection.";
+  }
+
+  return "Companion disconnected. Start the desktop companion, then connect.";
+}
+
+async function handleScreenCommand(command) {
+  if (command.action === "help") {
+    return formatScreenControlHelp();
+  }
+
+  if (!companionClient.getStatus().connected) {
+    const status = await companionClient.connect(elements.companionUrl.value.trim());
+
+    if (!status.connected) {
+      if (command.action === "describe") {
+        const screenReply = await handleScreenContextRequest(command.raw);
+
+        if (screenReply) {
+          return `${screenReply}\n\n${formatCompanionUnavailableReply()}`;
+        }
+      }
+
+      return formatCompanionUnavailableReply();
+    }
+  }
+
+  try {
+    setStatus(`Running screen action: ${command.action}...`);
+    const result = await companionClient.executeScreenCommand(command);
+    const reply = formatScreenCommandReply(result);
+    setStatus(result.ok ? "Screen action completed." : "Screen action failed.");
+    return reply;
+  } catch (error) {
+    setStatus("Screen action failed.");
+    return error.message || formatCompanionUnavailableReply();
+  }
 }
 
 function setupScreenContext() {
@@ -775,9 +1124,28 @@ function loadAvailableVoices() {
 }
 
 function handleVoiceTranscript(transcript) {
-  const wakeResult = detectWakePhrase(transcript);
+  const assistantName = getAssistantName();
+  const wakeOptions = { assistantName };
+  const wakeResult = detectWakePhrase(transcript, wakeOptions);
+  const orbMinimized = floatingOrb?.isMinimized();
+  const orbRespondsToVoice = floatingOrb?.getSettings().respondToVoice !== false;
 
-  if (isWakeListening) {
+  if (orbMinimized && orbRespondsToVoice && !wakeResult.isWakePhrase && mentionsAssistantName(transcript, assistantName)) {
+    const command = stripAssistantNamePrefix(transcript, assistantName);
+
+    if (command) {
+      sendMessage(command);
+      return;
+    }
+
+    if (!isAwaitingWakeCommand) {
+      isAwaitingWakeCommand = true;
+      acknowledgeWakePhrase();
+      return;
+    }
+  }
+
+  if (isWakeListening || orbMinimized) {
     if (wakeResult.isWakePhrase) {
       if (wakeResult.command) {
         isAwaitingWakeCommand = false;
@@ -796,7 +1164,11 @@ function handleVoiceTranscript(transcript) {
       return;
     }
 
-    setStatus('Wake listening... Say "Hey Lil-G" to get my attention.');
+    if (orbMinimized && orbRespondsToVoice) {
+      floatingOrb?.notify(formatOrbWakeHint(assistantName));
+    }
+
+    setStatus(formatWakePhraseHint(assistantName));
     return;
   }
 
@@ -813,8 +1185,17 @@ function handleVoiceTranscript(transcript) {
   sendMessage(transcript);
 }
 
+function getAssistantName() {
+  return profile.assistantName || "Lil-G";
+}
+
+function updateAssistantIdentity() {
+  floatingOrb?.updateAssistantIdentity();
+  renderMessages();
+}
+
 async function handleScreenContextRequest(content) {
-  if (!isScreenContextRequest(content)) {
+  if (!screenControlSettings.enabled || !isScreenContextRequest(content)) {
     return "";
   }
 
@@ -824,7 +1205,16 @@ async function handleScreenContextRequest(content) {
     return result.message;
   }
 
-  return `${result.message} I can keep track that you are sharing your screen, but this browser-only version does not run visual OCR or image understanding yet. Tell me what app or text you want help with, or paste the text, and I will respond using that context.`;
+  if (companionClient.getStatus().connected) {
+    try {
+      const describeResult = await companionClient.executeScreenCommand({ action: "describe" });
+      return formatScreenCommandReply(describeResult);
+    } catch {
+      return `${result.message} I can see that screen sharing is on, but I could not read the screen through the companion.`;
+    }
+  }
+
+  return `${result.message} Connect the Lil-G desktop companion for full screen reading plus voice click, tap, and typing.`;
 }
 
 async function requestScreenShare() {
@@ -881,7 +1271,7 @@ function updateScreenState() {
   const isSharing = Boolean(screenShareStream?.active);
   elements.screenStop.disabled = !isSharing;
   elements.screenState.textContent = isSharing
-    ? "Screen sharing is on. Full visual understanding needs a future OCR/vision service."
+    ? "Screen sharing is on. Connect the desktop companion for click, tap, and typing."
     : "Screen sharing is off.";
 }
 

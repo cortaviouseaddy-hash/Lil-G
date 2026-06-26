@@ -37,18 +37,33 @@ describe("PWA install structure", () => {
 
     assert.match(html, /Made by GFerryGoon/);
     assert.match(html, /data-avatar-options="clothes"/);
+    assert.match(html, /data-companion-connect/);
+    assert.match(html, /data-screen-control-enabled/);
+    assert.match(html, /data-self-thinking-enabled/);
+    assert.match(html, /settings-menu__icon/);
+    assert.match(html, /data-assistant-name/);
+    assert.match(html, /data-floating-orb-respond-voice/);
+    assert.match(html, /data-minimize-orb/);
   });
 
   it("caches the app shell in the service worker", async () => {
     const serviceWorker = await readFile(new URL("../sw.js", import.meta.url), "utf8");
 
-    assert.match(serviceWorker, /const CACHE_NAME = "lil-g-app-v8"/);
+    assert.match(serviceWorker, /const CACHE_NAME = "lil-g-app-v14"/);
+    assert.match(serviceWorker, /"\.\/src\/assistantName\.js"/);
     assert.match(serviceWorker, /"\.\/index\.html"/);
     assert.match(serviceWorker, /"\.\/manifest\.webmanifest"/);
     assert.match(serviceWorker, /"\.\/src\/appActions\.js"/);
     assert.match(serviceWorker, /"\.\/src\/avatarSettings\.js"/);
+    assert.match(serviceWorker, /"\.\/src\/companionClient\.js"/);
     assert.match(serviceWorker, /"\.\/src\/memory\.js"/);
     assert.match(serviceWorker, /"\.\/src\/profileSync\.js"/);
+    assert.match(serviceWorker, /"\.\/src\/thinkingEngine\.js"/);
+    assert.match(serviceWorker, /"\.\/src\/floatingOrbSettings\.js"/);
+    assert.match(serviceWorker, /"\.\/src\/thinkingSettings\.js"/);
+    assert.match(serviceWorker, /"\.\/src\/orbTheme\.js"/);
+    assert.match(serviceWorker, /"\.\/src\/screenControlSettings\.js"/);
+    assert.match(serviceWorker, /"\.\/src\/screenCommands\.js"/);
     assert.match(serviceWorker, /"\.\/src\/voiceSettings\.js"/);
     assert.match(serviceWorker, /"\.\/src\/webSearch\.js"/);
     assert.match(serviceWorker, /"\.\/assets\/icons\/icon-512\.png"/);
