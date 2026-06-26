@@ -128,15 +128,95 @@ button:disabled {
 
 .app-shell {
   display: grid;
-  grid-template-columns: minmax(17rem, 0.8fr) minmax(20rem, 1fr);
-  gap: 2rem;
-  width: min(70rem, calc(100% - 2rem));
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  width: min(42rem, calc(100% - 1.5rem));
   margin: 0 auto;
-  padding: 4rem 0;
+  padding: 1.25rem 0 2rem;
 }
 
 .hero {
-  align-self: center;
+  display: none;
+}
+
+.chat-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.chat-header__action {
+  flex-shrink: 0;
+}
+
+.settings-menu {
+  position: relative;
+}
+
+.settings-menu__button {
+  display: grid;
+  place-items: center;
+  width: 2.85rem;
+  height: 2.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.85rem;
+  color: var(--text);
+  cursor: pointer;
+  list-style: none;
+  background: var(--panel-strong);
+}
+
+.settings-menu__button:hover {
+  border-color: rgba(124, 219, 181, 0.35);
+}
+
+.settings-menu__icon {
+  display: block;
+  width: 1.15rem;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow:
+    0 -6px 0 currentColor,
+    0 6px 0 currentColor;
+}
+
+.settings-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-menu summary::after {
+  content: none;
+}
+
+.settings-panel {
+  position: absolute;
+  top: calc(100% + 0.55rem);
+  left: 0;
+  z-index: 12;
+  width: min(22rem, calc(100vw - 2rem));
+  max-height: min(70vh, 36rem);
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  background: var(--panel);
+  box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.35);
+  padding: 0.8rem;
+}
+
+.settings-group--compact {
+  padding-top: 0;
+}
+
+.settings-group--compact button[data-install] {
+  width: 100%;
+}
+
+.avatar-summary {
+  display: none;
 }
 
 .eyebrow {
@@ -589,57 +669,21 @@ h1 {
   background: #ff5e7a;
 }
 
-.settings-card {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.025);
-  padding: 0.9rem 1rem;
-}
-
-.settings-card summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  border-radius: 999px;
-  color: var(--accent);
-  cursor: pointer;
-  font-weight: 800;
-  list-style: none;
-  background: var(--panel-strong);
-  padding: 0.85rem 1rem;
-}
-
-.settings-card summary::-webkit-details-marker {
-  display: none;
-}
-
-.settings-card summary::after {
-  color: var(--muted);
-  content: "Open";
-  font-size: 0.78rem;
-}
-
-.settings-card[open] summary::after {
-  content: "Close";
-}
-
-.settings-card summary small {
-  color: var(--muted);
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
 .settings-grid {
   display: grid;
   gap: 1rem;
-  max-height: min(32rem, 70vh);
-  overflow-y: auto;
-  padding-top: 0.9rem;
 }
 
 .settings-group {
   display: grid;
-  gap: 0.8rem;
+  gap: 0.65rem;
+}
+
+.settings-group strong {
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
 }
 
 .settings-group p,
@@ -880,12 +924,16 @@ h1 {
 
 @media (max-width: 760px) {
   .app-shell {
-    grid-template-columns: 1fr;
-    padding: 2rem 0;
+    width: min(42rem, calc(100% - 1rem));
+    padding: 0.75rem 0 1.5rem;
+  }
+
+  .settings-panel {
+    width: min(22rem, calc(100vw - 1.5rem));
   }
 
   .chat-card {
-    min-height: 35rem;
+    min-height: calc(100vh - 1.5rem);
   }
 
   .avatar-settings-layout,
@@ -917,9 +965,7 @@ body.is-orb-minimized .startup-screen.is-hidden {
 }
 
 .chat-toolbar {
-  display: flex;
-  justify-content: flex-end;
-  padding: 0.75rem 1rem 0;
+  display: none;
 }
 
 .floating-orb-widget {
