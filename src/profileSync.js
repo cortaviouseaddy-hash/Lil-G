@@ -35,7 +35,16 @@ export function saveProfile(profile, storage = globalThis.localStorage) {
 }
 
 export function createProfileSyncCode(
-  { profile, memories, voiceSettings, replySettings, avatarSettings, screenControlSettings, thinkingSettings },
+  {
+    profile,
+    memories,
+    voiceSettings,
+    replySettings,
+    avatarSettings,
+    screenControlSettings,
+    thinkingSettings,
+    floatingOrbSettings
+  },
   options = {}
 ) {
   const payload = {
@@ -47,7 +56,8 @@ export function createProfileSyncCode(
     replySettings: replySettings ?? {},
     avatarSettings: avatarSettings ?? {},
     screenControlSettings: screenControlSettings ?? {},
-    thinkingSettings: thinkingSettings ?? {}
+    thinkingSettings: thinkingSettings ?? {},
+    floatingOrbSettings: floatingOrbSettings ?? {}
   };
 
   return encodePayload(payload);
@@ -70,7 +80,8 @@ export function parseProfileSyncCode(code) {
       replySettings: payload.replySettings ?? {},
       avatarSettings: payload.avatarSettings ?? {},
       screenControlSettings: payload.screenControlSettings ?? {},
-      thinkingSettings: payload.thinkingSettings ?? {}
+      thinkingSettings: payload.thinkingSettings ?? {},
+      floatingOrbSettings: payload.floatingOrbSettings ?? {}
     };
   } catch (error) {
     throw new Error("That profile sync code is not valid.");

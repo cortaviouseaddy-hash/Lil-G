@@ -52,6 +52,8 @@ import {
   loadScreenControlSettings,
   saveScreenControlSettings
 } from "./screenControlSettings.js";
+import { createFloatingOrbController } from "./floatingOrb.js";
+import { saveFloatingOrbSettings } from "./floatingOrbSettings.js";
 import { detectWakePhrase } from "./wakeWord.js";
 import {
   createWebSearchUrl,
@@ -135,6 +137,7 @@ let screenControlSettings = loadScreenControlSettings();
 let availableVoices = [];
 let screenShareStream;
 const companionClient = createCompanionClient();
+let floatingOrb;
 
 setupStartupIntro();
 renderMessages();
@@ -147,6 +150,7 @@ setupProfileSync();
 setupQuickLaunch();
 setupScreenContext();
 setupCompanionControl();
+setupFloatingOrb();
 updateStatus();
 setupSpeechRecognition();
 setupAppInstall();
@@ -208,9 +212,11 @@ async function sendMessage(rawInput) {
 
   if (thinkingSettings.enabled) {
     setStatus("Lil-G is thinking...");
+    floatingOrb?.setActivityState("thinking");
   }
 
   const assistantMessage = await buildAssistantReply(content);
+  floatingOrb?.setActivityState(isWakeListening || isRecognitionActive ? "listening" : "idle");
   messages.push(assistantMessage);
   renderMessages();
   speakAssistantReply(assistantMessage);
@@ -379,9 +385,11 @@ async function searchAndReply(query, options = {}) {
 function speakAssistantReply(assistantMessage) {
   if (elements.talkBack.checked) {
     const preset = getVoicePreset(voiceSettings.presetId);
+    floatingOrb?.setActivityState("speaking");
     const didSpeak = speakText(assistantMessage.content, {
       voice: createVoiceOptions(voiceSettings, availableVoices)
     });
+    floatingOrb?.setActivityState(isWakeListening || isRecognitionActive ? "listening" : "idle");
     setStatus(
       didSpeak
         ? `Lil-G answered with the ${preset.label} voice.`
@@ -536,6 +544,7 @@ function setupSpeechRecognition() {
   recognition.addEventListener("start", () => {
     isRecognitionActive = true;
     elements.mic.classList.add("is-listening");
+    floatingOrb?.setActivityState("listening");
     setStatus(isWakeListening ? 'Wake listening... Say "Hey Lil-G".' : "Listening...");
   });
 
@@ -543,6 +552,7 @@ function setupSpeechRecognition() {
     isRecognitionActive = false;
     elements.mic.classList.remove("is-listening");
     elements.wake.classList.toggle("is-listening", isWakeListening);
+    floatingOrb?.setActivityState(isWakeListening ? "listening" : "idle");
 
     if (isWakeListening) {
       window.setTimeout(() => startRecognition({ continuous: true }), 250);
@@ -660,7 +670,8 @@ function setupProfileSync() {
       replySettings,
       avatarSettings,
       screenControlSettings,
-      thinkingSettings
+      thinkingSettings,
+      floatingOrbSettings: floatingOrb?.getSettings() ?? {}
     });
     setStatus("Profile sync code created. Paste it on another device to connect this profile.");
   });
@@ -674,7 +685,8 @@ function setupProfileSync() {
         replySettings,
         avatarSettings,
         screenControlSettings,
-        thinkingSettings
+        thinkingSettings,
+        floatingOrbSettings: floatingOrb?.getSettings() ?? {}
       });
     }
 
@@ -696,6 +708,7 @@ function setupProfileSync() {
       avatarSettings = saveAvatarSettings(payload.avatarSettings);
       screenControlSettings = saveScreenControlSettings(payload.screenControlSettings);
       thinkingSettings = saveThinkingSettings(payload.thinkingSettings);
+      saveFloatingOrbSettings(payload.floatingOrbSettings);
       elements.profileName.value = profile.displayName;
       elements.importProfileCode.value = "";
       renderMemories();
@@ -703,6 +716,7 @@ function setupProfileSync() {
       syncVoiceControls();
       syncReplyControls();
       syncThinkingControls();
+      floatingOrb?.syncSettingsControls();
       syncScreenControlSettings();
       setStatus("Profile imported on this device.");
     } catch (error) {
@@ -764,11 +778,57 @@ function renderAvatar() {
   elements.avatarFigure.dataset.body = avatar.body;
   elements.avatarFigure.dataset.clothes = avatar.clothes;
   elements.avatarSummary.textContent = `Current avatar: ${formatAvatarSummary(avatar)}.`;
+  floatingOrb?.applyAvatarColor(avatar.color);
 
   for (const control of elements.avatarOptionControls) {
     const key = control.dataset.avatarOptions;
     control.value = avatar[key];
   }
+}
+
+function setupFloatingOrb() {
+  floatingOrb = createFloatingOrbController({
+    initialColor: avatarSettings.color,
+    onAutoWake: () => {
+      if (!isWakeListening) {
+        isWakeListening = true;
+        isAwaitingWakeCommand = false;
+        updateWakeButton();
+        startRecognition({ continuous: true });
+        setStatus('Minimized with wake listening on. Say "Hey Lil-G".');
+      }
+    },
+    onMic: () => {
+      isWakeListening = false;
+      isAwaitingWakeCommand = false;
+      updateWakeButton();
+      startRecognition();
+    },
+    onWake: () => {
+      isWakeListening = !isWakeListening;
+      isAwaitingWakeCommand = false;
+      updateWakeButton();
+
+      if (isWakeListening) {
+        startRecognition({ continuous: true });
+        setStatus('Wake listening... Say "Hey Lil-G".');
+        return;
+      }
+
+      recognition?.stop();
+      setStatus("Wake listening stopped.");
+    },
+    onRestore: () => {
+      setStatus("Lil-G is ready.");
+    },
+    onStatus: (message) => {
+      if (floatingOrb?.isMinimized()) {
+        setStatus(message);
+      }
+    }
+  });
+
+  floatingOrb.syncSettingsControls();
 }
 
 function setupQuickLaunch() {

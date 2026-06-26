@@ -249,6 +249,28 @@
               <p class="inline-status" data-screen-state>Screen sharing is off.</p>
             </div>
 
+            <div class="settings-group">
+              <strong>Floating orb mode</strong>
+              <p>
+                Minimize Lil-G into a draggable floating orb that keeps working in
+                the background. The orb uses the glow color from Avatar
+                customization.
+              </p>
+              <label class="toggle">
+                <input type="checkbox" data-floating-orb-enabled />
+                <span>Floating orb mode</span>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" data-floating-orb-auto-wake checked />
+                <span>Keep wake listening when minimized</span>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" data-floating-orb-pip checked />
+                <span>Float above other windows on Chrome or Edge</span>
+              </label>
+              <p class="inline-status" data-floating-orb-state>Floating orb mode is off.</p>
+            </div>
+
             <div class="device-access-note">
               <strong>Native app and Discord access</strong>
               <p>
@@ -261,6 +283,10 @@
             </div>
           </div>
         </details>
+
+        <div class="chat-toolbar">
+          <button class="secondary-button" type="button" data-minimize-orb hidden>Minimize to orb</button>
+        </div>
 
         <div class="messages" data-chat-messages aria-live="polite"></div>
 
@@ -280,6 +306,18 @@
         <p class="status" data-status role="status"></p>
       </section>
     </main>
+
+    <aside class="floating-orb-widget" data-floating-orb hidden aria-label="Lil-G floating orb">
+      <div class="floating-orb-widget__panel" data-floating-orb-panel hidden>
+        <p class="floating-orb-widget__status" data-floating-orb-status>Lil-G is ready.</p>
+        <div class="floating-orb-widget__actions">
+          <button class="secondary-button" type="button" data-floating-orb-restore>Open Lil-G</button>
+          <button class="secondary-button" type="button" data-floating-orb-mic>Mic</button>
+          <button class="secondary-button" type="button" data-floating-orb-wake>Wake</button>
+        </div>
+      </div>
+      <button class="floating-orb-widget__orb" type="button" data-floating-orb-button aria-label="Lil-G floating orb"></button>
+    </aside>
 
     <script type="module" src="./src/app.js"></script>
   </body>

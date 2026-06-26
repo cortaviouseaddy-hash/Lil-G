@@ -9,6 +9,7 @@ Lil-G is a lightweight browser chat assistant that can respond in text and talk 
 - Avatar customization for identity label, color, shape, hair, face, body style, and clothes.
 - Built-in response engine so Lil-G can answer immediately without an API key.
 - Optional self thinking: turn it on in Settings and Lil-G shows its reasoning steps before the final answer.
+- Floating orb minimized mode: shrink Lil-G into a draggable background orb that uses your chosen avatar glow color.
 - Internet search commands for phrases like "search the internet for..." or "look up...".
 - Device-local memory: say "remember that..." or share profile facts like your name, favorite things, interests, or speech style, and Lil-G can recall them later on the same device.
 - Profile sync codes for moving a local profile, memories, and voice settings between installed copies without a backend account service.
@@ -54,6 +55,20 @@ When it is on, Lil-G adds a collapsible **Self thinking** block above its reply.
 4. How it plans to shape the final answer
 
 Talk-back still reads only the final answer, not the thinking block. Self thinking works with normal chat replies and internet search answers. It stays off for direct commands like memory saves, avatar changes, and screen control.
+
+## Floating orb minimized mode
+
+In **Settings → Floating orb mode**, turn on the feature, choose your orb color in **Avatar customization → Skin / glow color**, then tap **Minimize to orb** in chat.
+
+When minimized:
+
+- Lil-G hides the full app and becomes a **draggable floating orb**
+- The orb uses your chosen avatar glow color (white, mint, blue, purple, gold, pink, or red)
+- Tap the orb for quick **Open Lil-G**, **Mic**, and **Wake** controls
+- Optional **Keep wake listening when minimized** keeps Lil-G listening in the background
+- On Chrome or Edge, **Float above other windows** opens the orb in a small always-on-top window
+
+Browsers may still pause the microphone when Lil-G is fully hidden or the device locks, so keep Lil-G open or use the Picture-in-Picture orb on desktop when you need background voice access.
 
 ## Memory and internet search
 

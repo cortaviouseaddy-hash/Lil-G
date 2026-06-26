@@ -909,3 +909,76 @@ h1 {
       inset -1rem -1.2rem 2rem rgba(95, 117, 165, 0.28);
   }
 }
+
+body.is-orb-minimized .app-shell,
+body.is-orb-minimized .startup-screen.is-hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.chat-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.75rem 1rem 0;
+}
+
+.floating-orb-widget {
+  position: fixed;
+  z-index: 30;
+  width: 5.25rem;
+  height: 5.25rem;
+  touch-action: none;
+}
+
+.floating-orb-widget__orb {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 999px;
+  cursor: grab;
+  animation: orb-breathe 2400ms ease-in-out infinite;
+}
+
+.floating-orb-widget__orb:active {
+  cursor: grabbing;
+}
+
+.floating-orb-widget.is-listening .floating-orb-widget__orb {
+  animation: orb-breathe 1200ms ease-in-out infinite;
+}
+
+.floating-orb-widget.is-thinking .floating-orb-widget__orb {
+  filter: brightness(1.08);
+}
+
+.floating-orb-widget.is-speaking .floating-orb-widget__orb {
+  transform: scale(1.04);
+}
+
+.floating-orb-widget__panel {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.75rem);
+  width: min(16rem, calc(100vw - 2rem));
+  padding: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  background: rgba(16, 19, 26, 0.96);
+  box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.35);
+}
+
+.floating-orb-widget__status {
+  margin: 0 0 0.75rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.floating-orb-widget__actions {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.floating-orb-widget__actions .secondary-button {
+  width: 100%;
+}
