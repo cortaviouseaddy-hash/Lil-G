@@ -6,6 +6,7 @@ const defaultRaidList = {
   raidName: "",
   startTime: "",
   groupSize: 5,
+  announcementMessageId: "",
   signups: [],
   nextIndex: 0,
   currentGroupIds: []
@@ -172,6 +173,94 @@ export function handleRaidListInput(input, raidList = defaultRaidList, options =
   return startListFromText(state, body);
 }
 
+export function setRaidListAnnouncementMessage(raidList, messageId) {
+  return normalizeRaidList({
+    ...raidList,
+    announcementMessageId: cleanText(messageId)
+  });
+}
+
+export function handleRaidListReply(replyEvent, raidList = defaultRaidList, options = {}) {
+  const state = normalizeRaidList(raidList);
+
+  if (!state.active) {
+    return createUnhandledResult(state);
+  }
+
+  const replyContent = typeof replyEvent === "string" ? replyEvent : (replyEvent?.content ?? "");
+
+  if (!isAutomaticSignupReply(replyContent)) {
+    return createUnhandledResult(state);
+  }
+
+  if (state.announcementMessageId) {
+    const repliedToMessageId = cleanText(
+      replyEvent?.repliedToMessageId
+        ?? replyEvent?.messageReferenceId
+        ?? replyEvent?.referenceMessageId
+        ?? replyEvent?.parentMessageId
+        ?? ""
+    );
+
+    if (repliedToMessageId !== state.announcementMessageId) {
+      return createUnhandledResult(state);
+    }
+  }
+
+  const name = cleanText(
+    replyEvent?.authorName
+      ?? replyEvent?.authorDisplayName
+      ?? replyEvent?.displayName
+      ?? replyEvent?.username
+      ?? options.fallbackName
+      ?? ""
+  );
+
+  if (!name) {
+    return createHandledResult(state, "A yes reply came in, but I need the sender name before I can add them.");
+  }
+
+  const result = addSignupNames(state, name, options);
+  const didAddSignup = result.raidList.signups.length > state.signups.length;
+
+  return {
+    ...result,
+    reply: didAddSignup
+      ? `Auto-added ${name} from their yes reply.\n\n${formatRaidListStatus(result.raidList)}`
+      : `${name} already replied yes and is in line.\n\n${formatRaidListStatus(result.raidList)}`
+  };
+}
+
+export function createRaidListEmbed(raidList = defaultRaidList) {
+  const state = normalizeRaidList(raidList);
+  const signups = state.signups.length
+    ? state.signups.map((signup, index) => `${index + 1}. ${signup.name}`).join("\n")
+    : "No one is in line yet. Reply yes to get added.";
+  const currentGroup = state.signups.filter((signup) => state.currentGroupIds.includes(signup.id));
+  const waitingCount = Math.max(state.signups.length - state.nextIndex, 0);
+
+  return {
+    title: state.active ? `${state.raidName} raid list` : "Raid list",
+    description: state.active
+      ? `I'm doing ${state.raidName} raids back to back starting at ${state.startTime}. Reply yes to this message to get in line. I'm also streaming it.`
+      : "Start a raid list with /list.",
+    fields: [
+      {
+        name: "Line",
+        value: signups
+      },
+      {
+        name: "Current set",
+        value: currentGroup.length ? formatNameList(currentGroup.map((signup) => signup.name)) : "None alerted yet"
+      },
+      {
+        name: "Waiting",
+        value: `${waitingCount} waiting`
+      }
+    ]
+  };
+}
+
 export function formatRaidListHelp() {
   return `Owner-only /list commands:
 /list - start setup and ask for the raid/time
@@ -184,7 +273,7 @@ export function formatRaidListHelp() {
 /list announce - show the queue announcement again
 /list close - clear the raid list
 
-Only you use these commands. Everyone else just replies yes to your announcement.`;
+Only you use these commands. Everyone else just replies yes to your announcement. If this helper is connected to a Discord bot, yes replies to the tracked embed/message can be added automatically.`;
 }
 
 function continueSetup(state, body) {
@@ -258,6 +347,7 @@ function completeSetup(state) {
     ...state,
     active: true,
     setupStep: "",
+    announcementMessageId: "",
     signups: [],
     nextIndex: 0,
     currentGroupIds: []
@@ -389,7 +479,7 @@ function formatAnnouncementReply(state) {
 
 ${formatQueueAnnouncement(state)}
 
-When someone replies yes, add them with /list yes <name>. When you finish a raid, use /list next or /list done to alert the next set of people.`;
+If this is connected to a Discord bot, yes replies to that message can be added to the embed list automatically. In this browser app, use /list yes <name> for pasted/manual replies. When you finish a raid, use /list next or /list done to alert the next set of people.`;
 }
 
 function formatQueueAnnouncement(state) {
@@ -474,6 +564,7 @@ function normalizeRaidList(raidList = {}) {
     raidName: cleanText(raidList.raidName ?? ""),
     startTime: cleanText(raidList.startTime ?? ""),
     groupSize,
+    announcementMessageId: cleanText(raidList.announcementMessageId ?? ""),
     signups,
     nextIndex: Math.min(Math.max(Number.isInteger(raidList.nextIndex) ? raidList.nextIndex : 0, 0), signups.length),
     currentGroupIds
@@ -501,6 +592,18 @@ function formatNameList(names) {
   }
 
   return `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+}
+
+function isAutomaticSignupReply(content) {
+  return /^\s*(?:yes|yeah|yep|yup|y|in|me|invite me|i'?m in|im in)(?:\s+please)?[\s!.]*$/i.test(content);
+}
+
+function createUnhandledResult(raidList) {
+  return {
+    handled: false,
+    raidList: normalizeRaidList(raidList),
+    reply: ""
+  };
 }
 
 function createHandledResult(raidList, reply) {
