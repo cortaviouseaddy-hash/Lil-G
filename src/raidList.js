@@ -18,7 +18,7 @@ const cancelPattern = /^(?:cancel|stop setup)$/i;
 const clearPattern = /^(?:clear|reset|close|end)$/i;
 const statusPattern = /^(?:status|line|queue)$/i;
 const announcePattern = /^(?:announce|announcement|message)$/i;
-const nextPattern = /^(?:next|done|complete|finished|echo|alert)$/i;
+const nextPattern = /^(?:next|done|complete|alert)$/i;
 const yesPattern = /^(?:yes|add|in)\b\s*(.*)$/i;
 const removePattern = /^remove\s+(.+)$/i;
 const sizePattern = /^size\s+(\d{1,2})$/i;
@@ -91,14 +91,14 @@ export function handleRaidListInput(input, raidList = defaultRaidList, options =
         ...state,
         setupStep: ""
       },
-      state.active ? "Setup canceled. Your current activity list is still active." : "Setup canceled."
+      state.active ? "Setup canceled. Your current raid list is still active." : "Setup canceled."
     );
   }
 
   if (commandMatch && clearPattern.test(body)) {
     return createHandledResult(
       { ...defaultRaidList },
-      "Activity list closed and cleared. Start a new owner-only list with /list."
+      "Raid list closed and cleared. Start a new owner-only list with /list."
     );
   }
 
@@ -115,15 +115,13 @@ export function handleRaidListInput(input, raidList = defaultRaidList, options =
   if (commandMatch && announcePattern.test(body)) {
     return state.active
       ? createHandledResult(state, formatAnnouncementReply(state))
-      : createHandledResult(state, "Start an activity list first with /list <activity name>.");
+      : createHandledResult(state, "Start a raid list first with /list <raid name>.");
   }
 
   if (commandMatch && nextPattern.test(body)) {
     return state.active
-      ? advanceRaidGroup(state, {
-          echoCompletion: /^(?:done|complete|finished|echo)$/i.test(body)
-        })
-      : createHandledResult(state, "Start an activity list first with /list <activity name>.");
+      ? advanceRaidGroup(state)
+      : createHandledResult(state, "Start a raid list first with /list <raid name>.");
   }
 
   const yesMatch = commandMatch ? body.match(yesPattern) : undefined;
@@ -131,7 +129,7 @@ export function handleRaidListInput(input, raidList = defaultRaidList, options =
   if (yesMatch) {
     return state.active
       ? addSignupNames(state, yesMatch[1], options)
-      : createHandledResult(state, "Start an activity list first with /list <activity name>.");
+      : createHandledResult(state, "Start a raid list first with /list <raid name>.");
   }
 
   const removeMatch = commandMatch ? body.match(removePattern) : undefined;
@@ -139,7 +137,7 @@ export function handleRaidListInput(input, raidList = defaultRaidList, options =
   if (removeMatch) {
     return state.active
       ? removeSignupName(state, removeMatch[1])
-      : createHandledResult(state, "Start an activity list first with /list <activity name>.");
+      : createHandledResult(state, "Start a raid list first with /list <raid name>.");
   }
 
   if (!body) {
@@ -153,7 +151,7 @@ export function handleRaidListInput(input, raidList = defaultRaidList, options =
         active: false,
         setupStep: "raid"
       },
-      "Owner-only /list setup started. What activity are you running, and what time should I tell the queue it starts? You can answer like: Mega Rayquaza raid at 8 PM."
+      "Owner-only /list setup started. What raid are you running, and what time should I tell the queue it starts? You can answer like: Mega Rayquaza at 8 PM."
     );
   }
 
@@ -242,10 +240,10 @@ export function createRaidListEmbed(raidList = defaultRaidList) {
   const waitingCount = Math.max(state.signups.length - state.nextIndex, 0);
 
   return {
-    title: state.active ? `${state.raidName} list` : "Activity list",
+    title: state.active ? `${state.raidName} raid list` : "Raid list",
     description: state.active
-      ? `I'm doing ${state.raidName} back to back starting at ${state.startTime}. Reply yes to this message to get in line. When it is your turn, I will let you know you can join. I'm also streaming it.`
-      : "Start an activity list with /list.",
+      ? `I'm doing ${state.raidName} raids back to back starting at ${state.startTime}. Reply yes to this message to get in line. I'm also streaming it.`
+      : "Start a raid list with /list.",
     fields: [
       {
         name: "Line",
@@ -265,16 +263,15 @@ export function createRaidListEmbed(raidList = defaultRaidList) {
 
 export function formatRaidListHelp() {
   return `Owner-only /list commands:
-/list - start setup and ask for the activity/time
-/list <activity name> - start a list for that activity, then I ask for the time
+/list - start setup and ask for the raid/time
+/list <raid name> - start a list for that raid, then I ask for the time
 /list yes <name> - add someone who replied yes
-/list next - alert the next ${defaultRaidList.groupSize}-person set that they can join
-/list done - same as /list next after you finish the activity
-/list echo - tell the next set the last run is done and they can join now
+/list next - alert the next ${defaultRaidList.groupSize}-person set when it is time
+/list done - same as /list next after you finish a raid
 /list status - show the current line
 /list size <number> - change how many people go in each set
 /list announce - show the queue announcement again
-/list close - clear the activity list
+/list close - clear the raid list
 
 Only you use these commands. Everyone else just replies yes to your announcement. If this helper is connected to a Discord bot, yes replies to the tracked embed/message can be added automatically.`;
 }
@@ -309,7 +306,7 @@ function continueSetup(state, body) {
     );
   }
 
-  return createHandledResult(state, "Tell me the activity name and start time, like: Mega Rayquaza raid at 8 PM.");
+  return createHandledResult(state, "Tell me the raid name and start time, like: Mega Rayquaza at 8 PM.");
 }
 
 function startListFromText(state, body) {
@@ -341,7 +338,7 @@ function startListFromText(state, body) {
       ...defaultRaidList,
       setupStep: "raid"
     },
-    "What activity are you running, and what time should I tell the queue it starts?"
+    "What raid are you running, and what time should I tell the queue it starts?"
   );
 }
 
@@ -365,7 +362,7 @@ function completeSetup(state) {
       },
       updatedList.raidName
         ? `Got it: ${updatedList.raidName}. What time should I tell the queue it starts?`
-        : "What activity are you running, and what time should I tell the queue it starts?"
+        : "What raid are you running, and what time should I tell the queue it starts?"
     );
   }
 
@@ -452,11 +449,11 @@ function updateGroupSize(state, groupSize) {
       ...state,
       groupSize
     },
-    `Activity list group size set to ${groupSize}. Use /list next, /list done, or /list echo to tell the next set they can join.`
+    `Raid list group size set to ${groupSize}. Use /list next to alert the next set.`
   );
 }
 
-function advanceRaidGroup(state, options = {}) {
+function advanceRaidGroup(state) {
   const nextGroup = state.signups.slice(state.nextIndex, state.nextIndex + state.groupSize);
 
   if (!nextGroup.length) {
@@ -474,7 +471,7 @@ function advanceRaidGroup(state, options = {}) {
     currentGroupIds: nextGroup.map((signup) => signup.id)
   };
 
-  return createHandledResult(updatedList, formatNextGroupAlert(updatedList, nextGroup, options));
+  return createHandledResult(updatedList, formatNextGroupAlert(updatedList, nextGroup));
 }
 
 function formatAnnouncementReply(state) {
@@ -482,20 +479,20 @@ function formatAnnouncementReply(state) {
 
 ${formatQueueAnnouncement(state)}
 
-If this is connected to a Discord bot, yes replies to that message can be added to the embed list automatically. In this browser app, use /list yes <name> for pasted/manual replies. When you finish one run, use /list done or /list echo to tell the next set they can join now.`;
+If this is connected to a Discord bot, yes replies to that message can be added to the embed list automatically. In this browser app, use /list yes <name> for pasted/manual replies. When you finish a raid, use /list next or /list done to alert the next set of people.`;
 }
 
 function formatQueueAnnouncement(state) {
-  return `List for ${state.raidName}
-I'm doing a bunch of ${state.raidName} back to back starting at ${state.startTime}. If you want in, reply yes to this message and I'll put you in line. When it is your turn, I will let you know you can join. I'm also streaming it.`;
+  return `Raid list for ${state.raidName}
+I'm doing a bunch of ${state.raidName} raids back to back starting at ${state.startTime}. If you want in, reply yes to this message and I'll put you in line. I'm also streaming it.`;
 }
 
-function formatNextGroupAlert(state, group, options = {}) {
-  const previousGroupText = options.echoCompletion ? `We are done with that ${state.raidName}.\n\n` : "";
+function formatNextGroupAlert(state, group) {
+  const previousGroupText = state.nextIndex > group.length ? "Marked the last set done.\n\n" : "";
 
-  return `${previousGroupText}Next activity group alert:
+  return `${previousGroupText}Next raid group alert:
 
-${formatNameList(group.map((signup) => signup.name))} - it's your turn for ${state.raidName}. You can join now. I'm streaming this run now, so be ready.
+${formatNameList(group.map((signup) => signup.name))} - it's time for ${state.raidName}. I'm streaming this run now, so be ready to join.
 
 Copy/send that alert to those people.`;
 }
@@ -503,22 +500,22 @@ Copy/send that alert to those people.`;
 function formatRaidListStatus(state) {
   if (!state.active) {
     if (state.setupStep === "raid") {
-      return "Owner-only /list setup is waiting for the activity name and start time.";
+      return "Owner-only /list setup is waiting for the raid name and start time.";
     }
 
     if (state.setupStep === "time") {
       return `Owner-only /list setup is waiting for the start time for ${state.raidName}.`;
     }
 
-    return "No activity list is active. Start one with /list.";
+    return "No raid list is active. Start one with /list.";
   }
 
   const currentGroup = state.signups.filter((signup) => state.currentGroupIds.includes(signup.id));
   const waiting = state.signups.slice(state.nextIndex);
   const alertedCount = Math.min(state.nextIndex, state.signups.length);
 
-  return `Activity list status:
-Activity: ${state.raidName}
+  return `Raid list status:
+Raid: ${state.raidName}
 Start time: ${state.startTime}
 Group size: ${state.groupSize}
 Signed up: ${state.signups.length}

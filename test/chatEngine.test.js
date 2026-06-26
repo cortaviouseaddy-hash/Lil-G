@@ -160,7 +160,7 @@ describe("app action helpers", () => {
   });
 });
 
-describe("activity list command helpers", () => {
+describe("raid list command helpers", () => {
   it("starts owner-only list setup and asks for raid details", () => {
     const result = handleRaidListInput("/list");
 
@@ -177,9 +177,8 @@ describe("activity list command helpers", () => {
     assert.equal(result.raidList.active, true);
     assert.equal(result.raidList.raidName, "Mega Rayquaza");
     assert.equal(result.raidList.startTime, "8 PM");
-    assert.match(result.reply, /doing a bunch of Mega Rayquaza back to back/);
+    assert.match(result.reply, /doing a bunch of Mega Rayquaza raids back to back/);
     assert.match(result.reply, /reply yes to this message/i);
-    assert.match(result.reply, /When it is your turn/i);
     assert.match(result.reply, /streaming it/i);
   });
 
@@ -207,23 +206,10 @@ describe("activity list command helpers", () => {
     const secondGroup = handleRaidListInput("/list done", firstGroup.raidList);
 
     assert.equal(firstGroup.raidList.nextIndex, 2);
-    assert.match(firstGroup.reply, /Corey and Ace - it's your turn for Mega Rayquaza/);
-    assert.match(firstGroup.reply, /You can join now/);
+    assert.match(firstGroup.reply, /Corey and Ace - it's time for Mega Rayquaza/);
     assert.equal(secondGroup.raidList.nextIndex, 3);
-    assert.match(secondGroup.reply, /We are done with that Mega Rayquaza run/);
-    assert.match(secondGroup.reply, /Mia - it's your turn for Mega Rayquaza/);
-  });
-
-  it("echoes completion and join-now wording for the next set", () => {
-    const list = handleRaidListInput("/list Dungeon run at 9 PM").raidList;
-    const sizedList = handleRaidListInput("/list size 1", list).raidList;
-    const withSignups = handleRaidListInput("/list yes Corey, Ace", sizedList).raidList;
-    const firstGroup = handleRaidListInput("/list next", withSignups).raidList;
-    const echo = handleRaidListInput("/list echo", firstGroup);
-
-    assert.match(echo.reply, /We are done with that Dungeon run/);
-    assert.match(echo.reply, /Ace - it's your turn for Dungeon run/);
-    assert.match(echo.reply, /You can join now/);
+    assert.match(secondGroup.reply, /Marked the last set done/);
+    assert.match(secondGroup.reply, /Mia - it's time for Mega Rayquaza/);
   });
 
   it("auto-adds users who reply yes to the tracked announcement message", () => {
@@ -273,9 +259,8 @@ describe("activity list command helpers", () => {
     const withSignups = handleRaidListInput("/list yes Corey, Ace", list).raidList;
     const embed = createRaidListEmbed(withSignups);
 
-    assert.equal(embed.title, "Mega Rayquaza list");
+    assert.equal(embed.title, "Mega Rayquaza raid list");
     assert.match(embed.description, /Reply yes to this message/);
-    assert.match(embed.description, /When it is your turn/);
     assert.deepEqual(
       embed.fields.map((field) => field.name),
       ["Line", "Current set", "Waiting"]
