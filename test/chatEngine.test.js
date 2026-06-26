@@ -368,8 +368,8 @@ describe("profile sync helpers", () => {
     const storage = createMemoryStorage();
     const profile = saveProfile({ displayName: " Corey  G " }, storage);
 
-    assert.deepEqual(profile, { displayName: "Corey G" });
-    assert.deepEqual(loadProfile(storage), profile);
+    assert.deepEqual(profile, { displayName: "Corey G", assistantName: "Lil-G" });
+    assert.deepEqual(loadProfile(storage), { displayName: "Corey G", assistantName: "Lil-G" });
     assert.equal(storage.getItem(PROFILE_STORAGE_KEY).includes("Corey G"), true);
   });
 

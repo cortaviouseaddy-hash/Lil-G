@@ -2,7 +2,8 @@ export const PROFILE_STORAGE_KEY = "lil-g-profile-v1";
 export const PROFILE_SYNC_VERSION = 1;
 
 const defaultProfile = {
-  displayName: ""
+  displayName: "",
+  assistantName: "Lil-G"
 };
 
 export function loadProfile(storage = globalThis.localStorage) {
@@ -89,8 +90,11 @@ export function parseProfileSyncCode(code) {
 }
 
 export function normalizeProfile(profile = {}) {
+  const assistantName = cleanProfileValue(profile.assistantName);
+
   return {
-    displayName: cleanProfileValue(profile.displayName)
+    displayName: cleanProfileValue(profile.displayName),
+    assistantName: assistantName || "Lil-G"
   };
 }
 

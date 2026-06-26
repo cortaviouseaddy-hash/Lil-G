@@ -56,6 +56,10 @@ When it is on, Lil-G adds a collapsible **Self thinking** block above its reply.
 
 Talk-back still reads only the final answer, not the thinking block. Self thinking works with normal chat replies and internet search answers. It stays off for direct commands like memory saves, avatar changes, and screen control.
 
+In **Settings → Profile sync**, set **Assistant name** to anything you want, or say `call yourself Nova`. Lil-G answers to that name in chat, wake listening, and floating orb mode.
+
+When minimized, say the assistant name or `Hey {name}` and Lil-G will listen and talk back if talk-back is on.
+
 ## Floating orb minimized mode
 
 In **Settings → Floating orb mode**, turn on the feature, choose your orb color in **Avatar customization → Skin / glow color**, then tap **Minimize to orb** in chat.

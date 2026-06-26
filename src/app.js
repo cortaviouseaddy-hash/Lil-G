@@ -52,6 +52,14 @@ import {
   loadScreenControlSettings,
   saveScreenControlSettings
 } from "./screenControlSettings.js";
+import {
+  detectAssistantRenameCommand,
+  formatAssistantRenameReply,
+  formatOrbWakeHint,
+  formatWakePhraseHint,
+  mentionsAssistantName,
+  stripAssistantNamePrefix
+} from "./assistantName.js";
 import { createFloatingOrbController } from "./floatingOrb.js";
 import { saveFloatingOrbSettings } from "./floatingOrbSettings.js";
 import { detectWakePhrase } from "./wakeWord.js";
@@ -95,6 +103,7 @@ const elements = {
   selfThinkingEnabled: document.querySelector("[data-self-thinking-enabled]"),
   selfThinkingState: document.querySelector("[data-self-thinking-state]"),
   profileName: document.querySelector("[data-profile-name]"),
+  assistantName: document.querySelector("[data-assistant-name]"),
   saveProfile: document.querySelector("[data-save-profile]"),
   exportProfile: document.querySelector("[data-export-profile]"),
   copyProfile: document.querySelector("[data-copy-profile]"),
@@ -220,9 +229,25 @@ async function sendMessage(rawInput) {
   messages.push(assistantMessage);
   renderMessages();
   speakAssistantReply(assistantMessage);
+
+  if (floatingOrb?.isMinimized()) {
+    floatingOrb.notify(assistantMessage.content);
+  }
 }
 
 async function buildAssistantReply(content) {
+  const renameCommand = detectAssistantRenameCommand(content);
+
+  if (renameCommand.isRename) {
+    profile = saveProfile({
+      ...profile,
+      assistantName: renameCommand.name
+    });
+    elements.assistantName.value = profile.assistantName;
+    updateAssistantIdentity();
+    return createAssistantMessage(formatAssistantRenameReply(renameCommand.name));
+  }
+
   const avatarCommand = detectAvatarCommand(content, avatarSettings);
 
   if (avatarCommand.isAvatarCommand) {
@@ -418,7 +443,8 @@ function createSources(searchResult) {
 }
 
 function acknowledgeWakePhrase() {
-  const reply = "I'm listening. What do you want to ask me?";
+  const name = getAssistantName();
+  const reply = `I'm listening. What do you want to ask me, ${profile.displayName || "friend"}?`;
   messages.push(createAssistantMessage(reply));
   renderMessages();
 
@@ -428,7 +454,8 @@ function acknowledgeWakePhrase() {
     });
   }
 
-  setStatus("Wake phrase heard. Say your message now.");
+  setStatus(`${formatWakePhraseHint(name)} Say your message now.`);
+  floatingOrb?.notify(`Listening for your next message to ${name}.`);
 }
 
 function formatSavedMemoryText(addedMemories) {
@@ -453,7 +480,7 @@ function renderMessages() {
       item.className = `message message--${message.role}`;
 
       const label = document.createElement("strong");
-      label.textContent = message.role === "assistant" ? "Lil-G" : "You";
+      label.textContent = message.role === "assistant" ? getAssistantName() : "You";
 
       const body = document.createElement("p");
       body.textContent = message.content;
@@ -545,7 +572,7 @@ function setupSpeechRecognition() {
     isRecognitionActive = true;
     elements.mic.classList.add("is-listening");
     floatingOrb?.setActivityState("listening");
-    setStatus(isWakeListening ? 'Wake listening... Say "Hey Lil-G".' : "Listening...");
+    setStatus(isWakeListening ? formatWakePhraseHint(getAssistantName()) : "Listening...");
   });
 
   recognition.addEventListener("end", () => {
@@ -576,7 +603,7 @@ function setupSpeechRecognition() {
 
     setStatus(
       isWakeListening
-        ? 'Still wake listening... Say "Hey Lil-G" when you want me.'
+        ? formatWakePhraseHint(getAssistantName())
         : "I couldn't hear that clearly. Try typing or tap the mic again."
     );
   });
@@ -653,13 +680,22 @@ function syncThinkingControls() {
 
 function setupProfileSync() {
   elements.profileName.value = profile.displayName;
+  elements.assistantName.value = profile.assistantName;
+  updateAssistantIdentity();
 
   elements.saveProfile.addEventListener("click", () => {
     profile = saveProfile({
-      displayName: elements.profileName.value
+      displayName: elements.profileName.value,
+      assistantName: elements.assistantName.value
     });
     elements.profileName.value = profile.displayName;
-    setStatus(profile.displayName ? `Profile saved for ${profile.displayName}.` : "Profile name cleared.");
+    elements.assistantName.value = profile.assistantName;
+    updateAssistantIdentity();
+    setStatus(
+      profile.assistantName
+        ? `Profile saved. I will answer to "${profile.assistantName}".`
+        : "Profile name cleared."
+    );
   });
 
   elements.exportProfile.addEventListener("click", () => {
@@ -710,6 +746,7 @@ function setupProfileSync() {
       thinkingSettings = saveThinkingSettings(payload.thinkingSettings);
       saveFloatingOrbSettings(payload.floatingOrbSettings);
       elements.profileName.value = profile.displayName;
+      elements.assistantName.value = profile.assistantName;
       elements.importProfileCode.value = "";
       renderMemories();
       renderAvatar();
@@ -717,6 +754,7 @@ function setupProfileSync() {
       syncReplyControls();
       syncThinkingControls();
       floatingOrb?.syncSettingsControls();
+      updateAssistantIdentity();
       syncScreenControlSettings();
       setStatus("Profile imported on this device.");
     } catch (error) {
@@ -789,13 +827,15 @@ function renderAvatar() {
 function setupFloatingOrb() {
   floatingOrb = createFloatingOrbController({
     initialColor: avatarSettings.color,
+    getAssistantName,
+    getOrbWakeHint: () => formatOrbWakeHint(getAssistantName()),
     onAutoWake: () => {
       if (!isWakeListening) {
         isWakeListening = true;
         isAwaitingWakeCommand = false;
         updateWakeButton();
         startRecognition({ continuous: true });
-        setStatus('Minimized with wake listening on. Say "Hey Lil-G".');
+        setStatus(`${formatOrbWakeHint(getAssistantName())} Wake listening is on.`);
       }
     },
     onMic: () => {
@@ -811,7 +851,7 @@ function setupFloatingOrb() {
 
       if (isWakeListening) {
         startRecognition({ continuous: true });
-        setStatus('Wake listening... Say "Hey Lil-G".');
+        setStatus(formatWakePhraseHint(getAssistantName()));
         return;
       }
 
@@ -1084,9 +1124,28 @@ function loadAvailableVoices() {
 }
 
 function handleVoiceTranscript(transcript) {
-  const wakeResult = detectWakePhrase(transcript);
+  const assistantName = getAssistantName();
+  const wakeOptions = { assistantName };
+  const wakeResult = detectWakePhrase(transcript, wakeOptions);
+  const orbMinimized = floatingOrb?.isMinimized();
+  const orbRespondsToVoice = floatingOrb?.getSettings().respondToVoice !== false;
 
-  if (isWakeListening) {
+  if (orbMinimized && orbRespondsToVoice && !wakeResult.isWakePhrase && mentionsAssistantName(transcript, assistantName)) {
+    const command = stripAssistantNamePrefix(transcript, assistantName);
+
+    if (command) {
+      sendMessage(command);
+      return;
+    }
+
+    if (!isAwaitingWakeCommand) {
+      isAwaitingWakeCommand = true;
+      acknowledgeWakePhrase();
+      return;
+    }
+  }
+
+  if (isWakeListening || orbMinimized) {
     if (wakeResult.isWakePhrase) {
       if (wakeResult.command) {
         isAwaitingWakeCommand = false;
@@ -1105,7 +1164,11 @@ function handleVoiceTranscript(transcript) {
       return;
     }
 
-    setStatus('Wake listening... Say "Hey Lil-G" to get my attention.');
+    if (orbMinimized && orbRespondsToVoice) {
+      floatingOrb?.notify(formatOrbWakeHint(assistantName));
+    }
+
+    setStatus(formatWakePhraseHint(assistantName));
     return;
   }
 
@@ -1120,6 +1183,15 @@ function handleVoiceTranscript(transcript) {
   }
 
   sendMessage(transcript);
+}
+
+function getAssistantName() {
+  return profile.assistantName || "Lil-G";
+}
+
+function updateAssistantIdentity() {
+  floatingOrb?.updateAssistantIdentity();
+  renderMessages();
 }
 
 async function handleScreenContextRequest(content) {

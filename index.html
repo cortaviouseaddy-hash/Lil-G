@@ -186,6 +186,10 @@
                   <span>Profile name</span>
                   <input data-profile-name autocomplete="name" placeholder="Your name or handle" type="text" />
                 </label>
+                <label>
+                  <span>Assistant name</span>
+                  <input data-assistant-name autocomplete="off" placeholder="Lil-G" type="text" />
+                </label>
                 <button class="secondary-button" type="button" data-save-profile>Save profile</button>
                 <button class="secondary-button" type="button" data-export-profile>Export sync code</button>
                 <button class="secondary-button" type="button" data-copy-profile>Copy code</button>
@@ -263,6 +267,10 @@
               <label class="toggle">
                 <input type="checkbox" data-floating-orb-auto-wake checked />
                 <span>Keep wake listening when minimized</span>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" data-floating-orb-respond-voice checked />
+                <span>Answer when I say the assistant name</span>
               </label>
               <label class="toggle">
                 <input type="checkbox" data-floating-orb-pip checked />

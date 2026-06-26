@@ -4,6 +4,7 @@ const defaultFloatingOrbSettings = {
   enabled: false,
   autoWakeOnMinimize: true,
   preferPictureInPicture: true,
+  respondToVoice: true,
   minimized: false,
   x: null,
   y: null
@@ -43,6 +44,7 @@ export function normalizeFloatingOrbSettings(settings = {}) {
     enabled: Boolean(settings.enabled),
     autoWakeOnMinimize: settings.autoWakeOnMinimize !== false,
     preferPictureInPicture: settings.preferPictureInPicture !== false,
+    respondToVoice: settings.respondToVoice !== false,
     minimized: Boolean(settings.minimized),
     x: normalizeCoordinate(settings.x),
     y: normalizeCoordinate(settings.y)

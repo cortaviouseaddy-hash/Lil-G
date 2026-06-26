@@ -36,6 +36,7 @@ describe("floating orb settings helpers", () => {
     assert.equal(settings.enabled, false);
     assert.equal(settings.autoWakeOnMinimize, true);
     assert.equal(settings.preferPictureInPicture, true);
+    assert.equal(settings.respondToVoice, true);
   });
 
   it("saves minimized state and position", () => {

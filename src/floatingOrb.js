@@ -27,6 +27,7 @@ export function createFloatingOrbController(options = {}) {
     minimize: documentRef.querySelector("[data-minimize-orb]"),
     enabled: documentRef.querySelector("[data-floating-orb-enabled]"),
     autoWake: documentRef.querySelector("[data-floating-orb-auto-wake]"),
+    respondToVoice: documentRef.querySelector("[data-floating-orb-respond-voice]"),
     pip: documentRef.querySelector("[data-floating-orb-pip]"),
     state: documentRef.querySelector("[data-floating-orb-state]")
   };
@@ -43,6 +44,7 @@ export function createFloatingOrbController(options = {}) {
     setActivityState,
     subscribe,
     syncSettingsControls,
+    updateAssistantIdentity,
     updateSettings
   };
 
@@ -79,6 +81,11 @@ export function createFloatingOrbController(options = {}) {
     elements.autoWake?.addEventListener("change", () => {
       updateSettings({
         autoWakeOnMinimize: elements.autoWake.checked
+      });
+    });
+    elements.respondToVoice?.addEventListener("change", () => {
+      updateSettings({
+        respondToVoice: elements.respondToVoice.checked
       });
     });
     elements.pip?.addEventListener("change", () => {
@@ -122,6 +129,11 @@ export function createFloatingOrbController(options = {}) {
       elements.autoWake.disabled = !settings.enabled;
     }
 
+    if (elements.respondToVoice) {
+      elements.respondToVoice.checked = settings.respondToVoice;
+      elements.respondToVoice.disabled = !settings.enabled;
+    }
+
     if (elements.pip) {
       elements.pip.checked = settings.preferPictureInPicture;
       elements.pip.disabled = !settings.enabled || !supportsDocumentPictureInPicture(windowRef);
@@ -143,7 +155,7 @@ export function createFloatingOrbController(options = {}) {
     }
 
     if (settings.minimized) {
-      return "Lil-G is minimized to the floating orb. Wake listening can keep running in the background.";
+      return "Lil-G is minimized to the floating orb. Talk to it by name and it can answer out loud in the background.";
     }
 
     const pipNote = supportsDocumentPictureInPicture(windowRef)
@@ -161,6 +173,25 @@ export function createFloatingOrbController(options = {}) {
     if (!showWidget) {
       closePictureInPicture();
       closePanel();
+    }
+  }
+
+  function updateAssistantIdentity() {
+    const assistantName = options.getAssistantName?.() || "Lil-G";
+
+    if (elements.orb) {
+      elements.orb.setAttribute("aria-label", `${assistantName} floating orb`);
+    }
+
+    if (elements.status && settings.minimized) {
+      elements.status.textContent = options.getOrbWakeHint?.() || `Say "Hey ${assistantName}" and I will answer.`;
+    }
+
+    if (pipWindow && !pipWindow.closed) {
+      const pipText = pipWindow.document.querySelector(".pip-shell p");
+      if (pipText) {
+        pipText.textContent = `${assistantName} is listening in the background. Say "${assistantName}" to talk.`;
+      }
     }
   }
 
@@ -219,10 +250,12 @@ export function createFloatingOrbController(options = {}) {
     closePanel();
 
     if (!enterOptions.silent) {
-      publish("Lil-G is minimized. Drag the orb anywhere. Tap it for quick controls.");
+      publish(options.getOrbWakeHint?.() || "Lil-G is minimized. Say my name to talk to me.");
     }
 
-    if (settings.autoWakeOnMinimize) {
+    updateAssistantIdentity();
+
+    if (settings.autoWakeOnMinimize || settings.respondToVoice) {
       options.onAutoWake?.();
     }
 
@@ -413,7 +446,7 @@ export function createFloatingOrbController(options = {}) {
         </style>
         <div class="pip-shell">
           <button type="button" class="pip-orb" data-floating-orb-pip-orb aria-label="Restore Lil-G"></button>
-          <p>Lil-G is running in the background. Tap the orb to restore.</p>
+          <p>${options.getAssistantName?.() || "Lil-G"} is listening in the background. Say its name to talk.</p>
           <button type="button" data-floating-orb-pip-restore>Open Lil-G</button>
         </div>
       `;

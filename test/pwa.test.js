@@ -40,14 +40,16 @@ describe("PWA install structure", () => {
     assert.match(html, /data-companion-connect/);
     assert.match(html, /data-screen-control-enabled/);
     assert.match(html, /data-self-thinking-enabled/);
-    assert.match(html, /data-floating-orb-enabled/);
+    assert.match(html, /data-assistant-name/);
+    assert.match(html, /data-floating-orb-respond-voice/);
     assert.match(html, /data-minimize-orb/);
   });
 
   it("caches the app shell in the service worker", async () => {
     const serviceWorker = await readFile(new URL("../sw.js", import.meta.url), "utf8");
 
-    assert.match(serviceWorker, /const CACHE_NAME = "lil-g-app-v12"/);
+    assert.match(serviceWorker, /const CACHE_NAME = "lil-g-app-v13"/);
+    assert.match(serviceWorker, /"\.\/src\/assistantName\.js"/);
     assert.match(serviceWorker, /"\.\/index\.html"/);
     assert.match(serviceWorker, /"\.\/manifest\.webmanifest"/);
     assert.match(serviceWorker, /"\.\/src\/appActions\.js"/);
