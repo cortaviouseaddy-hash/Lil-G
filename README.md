@@ -16,7 +16,7 @@ Lil-G is a lightweight browser chat assistant that can respond in text and talk 
 - Optional microphone dictation in browsers that support `SpeechRecognition` or `webkitSpeechRecognition`.
 - Wake listening mode: tap "Start wake listening", then say "Lil G" or "hey Lil G" to get Lil-G's attention.
 - Quick launch buttons and commands for supported web apps like Google, YouTube, Discord, Gmail, and Maps.
-- Private `/list` raid helper for owner-managed back-to-back raid queues: it drafts the queue announcement, formats an embed-style line, can auto-add yes replies when wired to a Discord message event, and generates the next-group alert.
+- Private `/list` activity helper for owner-managed back-to-back queues: it drafts the join-list announcement, formats an embed-style line, can auto-add yes replies when wired to a Discord message event, and echoes when the next group can join.
 - Screen-share awareness through the browser Screen Capture API where supported.
 - Roleplay-friendly responses for prompts like "roleplay as..." or "pretend...".
 - Progressive Web App structure so Lil-G can be installed on a phone, tablet, laptop, or desktop after it is hosted.
@@ -47,7 +47,7 @@ The local development server is useful for testing on your computer. Installatio
 - To recall memories: `what do you remember about me?`
 - To clear memories: `clear memory`
 - To search the internet: `search the internet for today's NBA news`
-- To start a private raid list: `/list Mega Rayquaza`, then answer the start time. In a connected Discord bot, yes replies to the tracked announcement/embed message can be added automatically. In this browser-only app, add pasted yes replies with `/list yes Corey`, and move to the next set with `/list next` or `/list done`.
+- To start a private activity list: `/list Mega Rayquaza raid`, then answer the start time. In a connected Discord bot, yes replies to the tracked announcement/embed message can be added automatically. In this browser-only app, add pasted yes replies with `/list yes Corey`, then use `/list next` to start a set or `/list done`/`/list echo` when that activity is done and the next set can join.
 
 Memories are saved in the browser's local storage on the current device. They do not sync across phones or browsers.
 
