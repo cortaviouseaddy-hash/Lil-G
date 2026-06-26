@@ -38,9 +38,9 @@
         <h1 id="title">Talk to Lil-G and hear it respond.</h1>
         <p>
           Type a message, tap the mic, or start wake listening and say
-          "Hey Lil-G" if your browser supports speech recognition. Lil-G replies
-          in chat, can search the internet, answer common questions, work
-          through problems, and remember facts on this device.
+          "Hey Lil-G" if your browser supports speech recognition. With the
+          desktop companion connected, Lil-G can also look at your screen and
+          follow voice commands to click, tap, and type where you tell it.
         </p>
         <div class="install-card">
           <strong>Install it on your phone, tablet, laptop, or desktop</strong>
@@ -209,11 +209,29 @@
             </div>
 
             <div class="settings-group">
+              <strong>Voice screen control</strong>
+              <p>
+                Run the Lil-G desktop companion on your computer, connect it here,
+                then use voice commands like "click on Submit", "tap Settings 3
+                times", or "type hello in the search box".
+              </p>
+              <label>
+                <span>Companion address</span>
+                <input data-companion-url type="url" value="ws://127.0.0.1:8765" />
+              </label>
+              <div class="screen-controls">
+                <button class="secondary-button" type="button" data-companion-connect>Connect companion</button>
+                <button class="secondary-button" type="button" data-companion-disconnect>Disconnect</button>
+              </div>
+              <p class="inline-status" data-companion-state>Companion disconnected.</p>
+            </div>
+
+            <div class="settings-group">
               <strong>Screen context</strong>
               <p>
                 Share your screen when you want Lil-G to know you are looking at
-                something. Full screen reading still needs a future OCR or vision
-                service, so paste text when you want exact help.
+                something. For full click, tap, and typing control, connect the
+                desktop companion above.
               </p>
               <div class="screen-controls">
                 <button class="secondary-button" type="button" data-screen-share>Share screen</button>

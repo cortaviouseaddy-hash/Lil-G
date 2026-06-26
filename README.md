@@ -17,6 +17,7 @@ Lil-G is a lightweight browser chat assistant that can respond in text and talk 
 - Wake listening mode: tap "Start wake listening", then say "Lil G" or "hey Lil G" to get Lil-G's attention.
 - Quick launch buttons and commands for supported web apps like Google, YouTube, Discord, Gmail, and Maps.
 - Screen-share awareness through the browser Screen Capture API where supported.
+- Voice screen control with the Lil-G desktop companion: look at your screen, click or tap targets by name, repeat clicks as many times as you ask, and type text where you tell it — all by voice.
 - Roleplay-friendly responses for prompts like "roleplay as..." or "pretend...".
 - Progressive Web App structure so Lil-G can be installed on a phone, tablet, laptop, or desktop after it is hosted.
 - Focused tests for response generation and speech triggering.
@@ -80,10 +81,40 @@ Open **Voice and device settings**, save a profile name, then choose **Export sy
 
 This behaves like a lightweight account connection, but it is manual and local. A real automatic account system would need a backend service, sign-in, encrypted storage, and sync conflict handling.
 
+## Voice screen control
+
+Lil-G can look at your screen and follow voice commands to click, tap, and type when the **desktop companion** is running on your computer.
+
+### Setup
+
+```bash
+pip install -r companion/requirements.txt
+python companion/lilg_companion.py
+```
+
+You also need [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) installed on your system so Lil-G can read on-screen text and find click targets.
+
+In Lil-G settings, open **Voice screen control**, confirm the companion address (`ws://127.0.0.1:8765` by default), and tap **Connect companion**.
+
+### Voice commands
+
+Use the mic or wake listening, then say commands like:
+
+- `look at my screen`
+- `click on Submit`
+- `tap Settings 3 times`
+- `double click on the file icon`
+- `type hello world`
+- `type my email in the search box`
+- `press enter`
+- `scroll down`
+
+Lil-G finds on-screen text with OCR, moves the mouse, clicks or taps as many times as you ask, and types where you tell it.
+
 ## Quick launch, screen context, roleplay, and Discord
 
 - Type `open Discord`, `open YouTube`, `open Gmail`, `open Maps`, or `open browser and search for Lil G` to open supported web destinations in a new tab.
-- Use **Share screen** or ask Lil-G to look at your screen to trigger the browser's screen-sharing prompt where supported. This version knows screen sharing is active, but full visual reading requires a future OCR or vision service.
+- Use **Share screen** or ask Lil-G to look at your screen. With the desktop companion connected, Lil-G can read visible text through OCR. Without it, screen sharing only tells Lil-G that sharing is active.
 - Ask Lil-G to roleplay or pretend to be a character, then provide the scene and boundaries.
 - For Discord, paste the relevant messages into Lil-G and ask for a reply. Directly reading or sending Discord messages requires an approved Discord bot/OAuth integration or a native companion app with the right permissions.
 
@@ -114,4 +145,4 @@ Wake listening also depends on browser speech recognition and microphone permiss
 
 Internet search depends on the phone or browser having network access. Lil-G shows sourced summary results when available and includes a broader web-search link as a fallback.
 
-Because this is a browser PWA, it cannot read SMS or Discord messages directly, control arbitrary native apps, inspect the screen without the user's screen-share permission, show system-level reply pop-ups, or keep the microphone listening after the app/browser is closed. Those capabilities require a native desktop/mobile app or approved service integration with the relevant accessibility, notification, microphone, screen recording, Discord, and messaging permissions.
+Because this is a browser PWA, click, tap, and typing outside the browser require the Lil-G desktop companion. The companion needs screen access and uses OCR to find labels and buttons. It cannot read SMS or Discord messages directly, show system-level reply pop-ups, or keep the microphone listening after the app/browser is closed without a fuller native app and the relevant operating-system permissions.

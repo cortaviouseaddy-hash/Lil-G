@@ -35,6 +35,13 @@ import {
   saveVoiceSettings,
   voicePresets
 } from "./voiceSettings.js";
+import { createCompanionClient } from "./companionClient.js";
+import {
+  detectScreenCommand,
+  formatCompanionUnavailableReply,
+  formatScreenCommandReply,
+  formatScreenControlHelp
+} from "./screenCommands.js";
 import { detectWakePhrase } from "./wakeWord.js";
 import {
   createWebSearchUrl,
@@ -81,6 +88,10 @@ const elements = {
   importProfileCode: document.querySelector("[data-import-profile-code]"),
   importProfile: document.querySelector("[data-import-profile]"),
   quickLaunch: document.querySelector("[data-quick-launch]"),
+  companionUrl: document.querySelector("[data-companion-url]"),
+  companionConnect: document.querySelector("[data-companion-connect]"),
+  companionDisconnect: document.querySelector("[data-companion-disconnect]"),
+  companionState: document.querySelector("[data-companion-state]"),
   screenShare: document.querySelector("[data-screen-share]"),
   screenStop: document.querySelector("[data-screen-stop]"),
   screenState: document.querySelector("[data-screen-state]"),
@@ -107,6 +118,7 @@ let profile = loadProfile();
 let avatarSettings = loadAvatarSettings();
 let availableVoices = [];
 let screenShareStream;
+const companionClient = createCompanionClient();
 
 setupStartupIntro();
 renderMessages();
@@ -117,6 +129,7 @@ setupReplySettings();
 setupProfileSync();
 setupQuickLaunch();
 setupScreenContext();
+setupCompanionControl();
 updateStatus();
 setupSpeechRecognition();
 setupAppInstall();
@@ -226,6 +239,13 @@ async function buildAssistantReply(content) {
     memories = automaticMemoryResult.memories;
     saveMemories(memories);
     renderMemories();
+  }
+
+  const screenCommand = detectScreenCommand(content);
+
+  if (screenCommand.isScreenCommand) {
+    const screenReply = await handleScreenCommand(screenCommand);
+    return createAssistantMessage(withSavedMemoryText(screenReply, automaticMemoryResult.added));
   }
 
   const screenReply = await handleScreenContextRequest(content);
@@ -673,6 +693,88 @@ function formatAvatarOptionLabel(value) {
   return value.replace(/-/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function setupCompanionControl() {
+  elements.companionUrl.value = companionClient.getUrl();
+
+  companionClient.subscribe((status) => {
+    elements.companionState.textContent = formatCompanionState(status);
+    elements.companionDisconnect.disabled = !status.connected;
+    elements.companionConnect.disabled = status.state === "connecting";
+  });
+
+  elements.companionConnect.addEventListener("click", async () => {
+    const url = elements.companionUrl.value.trim();
+
+    if (!url) {
+      setStatus("Enter a companion WebSocket address first.");
+      return;
+    }
+
+    companionClient.saveUrl(url);
+    setStatus("Connecting to the Lil-G desktop companion...");
+    const status = await companionClient.connect(url);
+    setStatus(
+      status.connected
+        ? "Companion connected. You can now use voice click, tap, and type commands."
+        : "Could not connect to the companion. Start it with python companion/lilg_companion.py."
+    );
+  });
+
+  elements.companionDisconnect.addEventListener("click", () => {
+    companionClient.disconnect();
+    setStatus("Companion disconnected.");
+  });
+}
+
+function formatCompanionState(status) {
+  if (status.state === "connected") {
+    return `Companion connected at ${status.url}.`;
+  }
+
+  if (status.state === "connecting") {
+    return "Connecting to companion...";
+  }
+
+  if (status.state === "unsupported") {
+    return "This browser cannot open a companion WebSocket connection.";
+  }
+
+  return "Companion disconnected. Start the desktop companion, then connect.";
+}
+
+async function handleScreenCommand(command) {
+  if (command.action === "help") {
+    return formatScreenControlHelp();
+  }
+
+  if (!companionClient.getStatus().connected) {
+    const status = await companionClient.connect(elements.companionUrl.value.trim());
+
+    if (!status.connected) {
+      if (command.action === "describe") {
+        const screenReply = await handleScreenContextRequest(command.raw);
+
+        if (screenReply) {
+          return `${screenReply}\n\n${formatCompanionUnavailableReply()}`;
+        }
+      }
+
+      return formatCompanionUnavailableReply();
+    }
+  }
+
+  try {
+    setStatus(`Running screen action: ${command.action}...`);
+    const result = await companionClient.executeScreenCommand(command);
+    const reply = formatScreenCommandReply(result);
+    setStatus(result.ok ? "Screen action completed." : "Screen action failed.");
+    return reply;
+  } catch (error) {
+    setStatus("Screen action failed.");
+    return error.message || formatCompanionUnavailableReply();
+  }
+}
+
 function setupScreenContext() {
   if (!canShareScreen()) {
     elements.screenShare.disabled = true;
@@ -824,7 +926,16 @@ async function handleScreenContextRequest(content) {
     return result.message;
   }
 
-  return `${result.message} I can keep track that you are sharing your screen, but this browser-only version does not run visual OCR or image understanding yet. Tell me what app or text you want help with, or paste the text, and I will respond using that context.`;
+  if (companionClient.getStatus().connected) {
+    try {
+      const describeResult = await companionClient.executeScreenCommand({ action: "describe" });
+      return formatScreenCommandReply(describeResult);
+    } catch {
+      return `${result.message} I can see that screen sharing is on, but I could not read the screen through the companion.`;
+    }
+  }
+
+  return `${result.message} Connect the Lil-G desktop companion for full screen reading plus voice click, tap, and typing.`;
 }
 
 async function requestScreenShare() {
@@ -881,7 +992,7 @@ function updateScreenState() {
   const isSharing = Boolean(screenShareStream?.active);
   elements.screenStop.disabled = !isSharing;
   elements.screenState.textContent = isSharing
-    ? "Screen sharing is on. Full visual understanding needs a future OCR/vision service."
+    ? "Screen sharing is on. Connect the desktop companion for click, tap, and typing."
     : "Screen sharing is off.";
 }
 
