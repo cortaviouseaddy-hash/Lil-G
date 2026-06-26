@@ -94,7 +94,7 @@ python companion/lilg_companion.py
 
 You also need [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) installed on your system so Lil-G can read on-screen text and find click targets.
 
-In Lil-G settings, open **Voice screen control**, confirm the companion address (`ws://127.0.0.1:8765` by default), and tap **Connect companion**.
+In Lil-G settings, turn on **Voice screen control**, confirm the companion address (`ws://127.0.0.1:8765` by default), and tap **Connect companion**.
 
 ### Voice commands
 

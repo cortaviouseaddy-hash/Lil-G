@@ -38,12 +38,13 @@ describe("PWA install structure", () => {
     assert.match(html, /Made by GFerryGoon/);
     assert.match(html, /data-avatar-options="clothes"/);
     assert.match(html, /data-companion-connect/);
+    assert.match(html, /data-screen-control-enabled/);
   });
 
   it("caches the app shell in the service worker", async () => {
     const serviceWorker = await readFile(new URL("../sw.js", import.meta.url), "utf8");
 
-    assert.match(serviceWorker, /const CACHE_NAME = "lil-g-app-v9"/);
+    assert.match(serviceWorker, /const CACHE_NAME = "lil-g-app-v10"/);
     assert.match(serviceWorker, /"\.\/index\.html"/);
     assert.match(serviceWorker, /"\.\/manifest\.webmanifest"/);
     assert.match(serviceWorker, /"\.\/src\/appActions\.js"/);
@@ -51,6 +52,7 @@ describe("PWA install structure", () => {
     assert.match(serviceWorker, /"\.\/src\/companionClient\.js"/);
     assert.match(serviceWorker, /"\.\/src\/memory\.js"/);
     assert.match(serviceWorker, /"\.\/src\/profileSync\.js"/);
+    assert.match(serviceWorker, /"\.\/src\/screenControlSettings\.js"/);
     assert.match(serviceWorker, /"\.\/src\/screenCommands\.js"/);
     assert.match(serviceWorker, /"\.\/src\/voiceSettings\.js"/);
     assert.match(serviceWorker, /"\.\/src\/webSearch\.js"/);

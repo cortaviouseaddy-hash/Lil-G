@@ -208,13 +208,17 @@
               </div>
             </div>
 
-            <div class="settings-group">
+            <div class="settings-group" data-screen-control-settings>
               <strong>Voice screen control</strong>
               <p>
-                Run the Lil-G desktop companion on your computer, connect it here,
-                then use voice commands like "click on Submit", "tap Settings 3
-                times", or "type hello in the search box".
+                Turn this on to let Lil-G look at your screen and follow voice
+                commands to click, tap, and type. Requires the desktop companion
+                below.
               </p>
+              <label class="toggle">
+                <input type="checkbox" data-screen-control-enabled />
+                <span>Voice screen control</span>
+              </label>
               <label>
                 <span>Companion address</span>
                 <input data-companion-url type="url" value="ws://127.0.0.1:8765" />
@@ -223,7 +227,7 @@
                 <button class="secondary-button" type="button" data-companion-connect>Connect companion</button>
                 <button class="secondary-button" type="button" data-companion-disconnect>Disconnect</button>
               </div>
-              <p class="inline-status" data-companion-state>Companion disconnected.</p>
+              <p class="inline-status" data-companion-state>Voice screen control is off.</p>
             </div>
 
             <div class="settings-group">

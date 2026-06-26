@@ -140,9 +140,13 @@ export function formatScreenCommandReply(result) {
   }
 }
 
+export function formatScreenControlDisabledReply() {
+  return "Voice screen control is turned off. Open Settings and turn on Voice screen control to use look, click, tap, and type commands.";
+}
+
 export function formatScreenControlHelp() {
   return [
-    "Voice screen control works when the Lil-G desktop companion is running and connected.",
+    "Voice screen control works when it is turned on in Settings and the Lil-G desktop companion is running and connected.",
     "",
     "Try commands like:",
     '- "look at my screen"',

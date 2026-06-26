@@ -70,7 +70,7 @@ describe("screen command helpers", () => {
       /clicked "Save" 2 times/
     );
     assert.match(formatScreenCommandReply({ ok: false, message: "No target." }), /No target/);
-    assert.match(formatScreenControlHelp(), /click on Submit/);
+    assert.match(formatScreenControlHelp(), /turned on in Settings/);
     assert.match(formatCompanionUnavailableReply(), /desktop companion/);
   });
 });

@@ -550,6 +550,17 @@ h1 {
   background: rgba(255, 255, 255, 0.03);
 }
 
+.settings-group.is-disabled label:not(.toggle),
+.settings-group.is-disabled .screen-controls,
+.settings-group.is-disabled input:not([data-screen-control-enabled]) {
+  opacity: 0.55;
+}
+
+.settings-group.is-disabled input:not([data-screen-control-enabled]),
+.settings-group.is-disabled button:not([data-screen-control-enabled]) {
+  pointer-events: none;
+}
+
 .toggle {
   display: flex;
   align-items: center;

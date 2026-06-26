@@ -40,8 +40,13 @@ import {
   detectScreenCommand,
   formatCompanionUnavailableReply,
   formatScreenCommandReply,
+  formatScreenControlDisabledReply,
   formatScreenControlHelp
 } from "./screenCommands.js";
+import {
+  loadScreenControlSettings,
+  saveScreenControlSettings
+} from "./screenControlSettings.js";
 import { detectWakePhrase } from "./wakeWord.js";
 import {
   createWebSearchUrl,
@@ -92,6 +97,8 @@ const elements = {
   companionConnect: document.querySelector("[data-companion-connect]"),
   companionDisconnect: document.querySelector("[data-companion-disconnect]"),
   companionState: document.querySelector("[data-companion-state]"),
+  screenControlEnabled: document.querySelector("[data-screen-control-enabled]"),
+  screenControlSettingsGroup: document.querySelector("[data-screen-control-settings]"),
   screenShare: document.querySelector("[data-screen-share]"),
   screenStop: document.querySelector("[data-screen-stop]"),
   screenState: document.querySelector("[data-screen-state]"),
@@ -116,6 +123,7 @@ let voiceSettings = loadVoiceSettings();
 let replySettings = loadReplySettings();
 let profile = loadProfile();
 let avatarSettings = loadAvatarSettings();
+let screenControlSettings = loadScreenControlSettings();
 let availableVoices = [];
 let screenShareStream;
 const companionClient = createCompanionClient();
@@ -244,6 +252,12 @@ async function buildAssistantReply(content) {
   const screenCommand = detectScreenCommand(content);
 
   if (screenCommand.isScreenCommand) {
+    if (!screenControlSettings.enabled) {
+      return createAssistantMessage(
+        withSavedMemoryText(formatScreenControlDisabledReply(), automaticMemoryResult.added)
+      );
+    }
+
     const screenReply = await handleScreenCommand(screenCommand);
     return createAssistantMessage(withSavedMemoryText(screenReply, automaticMemoryResult.added));
   }
@@ -553,7 +567,8 @@ function setupProfileSync() {
       memories,
       voiceSettings,
       replySettings,
-      avatarSettings
+      avatarSettings,
+      screenControlSettings
     });
     setStatus("Profile sync code created. Paste it on another device to connect this profile.");
   });
@@ -565,7 +580,8 @@ function setupProfileSync() {
         memories,
         voiceSettings,
         replySettings,
-        avatarSettings
+        avatarSettings,
+        screenControlSettings
       });
     }
 
@@ -585,12 +601,14 @@ function setupProfileSync() {
       voiceSettings = saveVoiceSettings(payload.voiceSettings);
       replySettings = saveReplySettings(payload.replySettings);
       avatarSettings = saveAvatarSettings(payload.avatarSettings);
+      screenControlSettings = saveScreenControlSettings(payload.screenControlSettings);
       elements.profileName.value = profile.displayName;
       elements.importProfileCode.value = "";
       renderMemories();
       renderAvatar();
       syncVoiceControls();
       syncReplyControls();
+      syncScreenControlSettings();
       setStatus("Profile imported on this device.");
     } catch (error) {
       setStatus(error.message);
@@ -695,14 +713,34 @@ function formatAvatarOptionLabel(value) {
 
 function setupCompanionControl() {
   elements.companionUrl.value = companionClient.getUrl();
+  syncScreenControlSettings();
+
+  elements.screenControlEnabled.addEventListener("change", () => {
+    screenControlSettings = saveScreenControlSettings({
+      enabled: elements.screenControlEnabled.checked
+    });
+    syncScreenControlSettings();
+
+    if (!screenControlSettings.enabled) {
+      companionClient.disconnect();
+      setStatus("Voice screen control turned off.");
+      return;
+    }
+
+    setStatus("Voice screen control turned on. Connect the desktop companion to use it.");
+  });
 
   companionClient.subscribe((status) => {
     elements.companionState.textContent = formatCompanionState(status);
-    elements.companionDisconnect.disabled = !status.connected;
-    elements.companionConnect.disabled = status.state === "connecting";
+    syncScreenControlSettings(status);
   });
 
   elements.companionConnect.addEventListener("click", async () => {
+    if (!screenControlSettings.enabled) {
+      setStatus("Turn on voice screen control in Settings first.");
+      return;
+    }
+
     const url = elements.companionUrl.value.trim();
 
     if (!url) {
@@ -726,7 +764,21 @@ function setupCompanionControl() {
   });
 }
 
+function syncScreenControlSettings(companionStatus = companionClient.getStatus()) {
+  const enabled = screenControlSettings.enabled;
+  elements.screenControlEnabled.checked = enabled;
+  elements.companionUrl.disabled = !enabled;
+  elements.companionConnect.disabled = !enabled || companionStatus.state === "connecting";
+  elements.companionDisconnect.disabled = !enabled || !companionStatus.connected;
+  elements.screenControlSettingsGroup.classList.toggle("is-disabled", !enabled);
+  elements.companionState.textContent = formatCompanionState(companionStatus);
+}
+
 function formatCompanionState(status) {
+  if (!screenControlSettings.enabled) {
+    return "Voice screen control is off. Turn it on above to connect the companion.";
+  }
+
   if (status.state === "connected") {
     return `Companion connected at ${status.url}.`;
   }
@@ -916,7 +968,7 @@ function handleVoiceTranscript(transcript) {
 }
 
 async function handleScreenContextRequest(content) {
-  if (!isScreenContextRequest(content)) {
+  if (!screenControlSettings.enabled || !isScreenContextRequest(content)) {
     return "";
   }
 
