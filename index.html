@@ -151,7 +151,12 @@
 
             <div class="settings-group">
               <strong>AI behavior</strong>
-              <p>Choose how much Lil-G says back when it answers or has a conversation.</p>
+              <p>Choose how much Lil-G says back and whether it should think through answers first.</p>
+              <label class="toggle">
+                <input type="checkbox" data-self-thinking-enabled />
+                <span>Self thinking</span>
+              </label>
+              <p class="inline-status" data-self-thinking-state>Self thinking is off.</p>
               <label class="select-control">
                 <span>Response length</span>
                 <select data-reply-length>

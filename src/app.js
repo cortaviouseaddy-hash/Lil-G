@@ -35,6 +35,11 @@ import {
   saveVoiceSettings,
   voicePresets
 } from "./voiceSettings.js";
+import { buildThinkingTrace, formatThinkingTrace, shouldShowThinkingForReply } from "./thinkingEngine.js";
+import {
+  loadThinkingSettings,
+  saveThinkingSettings
+} from "./thinkingSettings.js";
 import { createCompanionClient } from "./companionClient.js";
 import {
   detectScreenCommand,
@@ -85,6 +90,8 @@ const elements = {
   voiceRate: document.querySelector("[data-voice-rate]"),
   voiceRateValue: document.querySelector("[data-voice-rate-value]"),
   replyLength: document.querySelector("[data-reply-length]"),
+  selfThinkingEnabled: document.querySelector("[data-self-thinking-enabled]"),
+  selfThinkingState: document.querySelector("[data-self-thinking-state]"),
   profileName: document.querySelector("[data-profile-name]"),
   saveProfile: document.querySelector("[data-save-profile]"),
   exportProfile: document.querySelector("[data-export-profile]"),
@@ -121,6 +128,7 @@ let deferredInstallPrompt;
 let memories = loadMemories();
 let voiceSettings = loadVoiceSettings();
 let replySettings = loadReplySettings();
+let thinkingSettings = loadThinkingSettings();
 let profile = loadProfile();
 let avatarSettings = loadAvatarSettings();
 let screenControlSettings = loadScreenControlSettings();
@@ -134,6 +142,7 @@ renderMemories();
 setupAvatarCustomization();
 setupVoiceSettings();
 setupReplySettings();
+setupThinkingSettings();
 setupProfileSync();
 setupQuickLaunch();
 setupScreenContext();
@@ -196,6 +205,10 @@ async function sendMessage(rawInput) {
   messages.push(userMessage);
   elements.input.value = "";
   renderMessages();
+
+  if (thinkingSettings.enabled) {
+    setStatus("Lil-G is thinking...");
+  }
 
   const assistantMessage = await buildAssistantReply(content);
   messages.push(assistantMessage);
@@ -285,13 +298,13 @@ async function buildAssistantReply(content) {
   const searchIntent = detectSearchIntent(content);
 
   if (searchIntent.isSearch) {
-    return searchAndReply(searchIntent.query);
+    return searchAndReply(searchIntent.query, { userMessage: content });
   }
 
   const knowledgeQuestion = detectKnowledgeQuestion(content);
 
   if (knowledgeQuestion.isSearch) {
-    return searchAndReply(knowledgeQuestion.query, { automatic: true });
+    return searchAndReply(knowledgeQuestion.query, { automatic: true, userMessage: content });
   }
 
   const relevantMemories = getRelevantMemoryText(content, memories);
@@ -300,7 +313,26 @@ async function buildAssistantReply(content) {
     replyLength: replySettings.length
   });
 
-  return createAssistantMessage(withSavedMemoryText(reply, automaticMemoryResult.added));
+  return withThinking(
+    createAssistantMessage(withSavedMemoryText(reply, automaticMemoryResult.added)),
+    content,
+    {
+      relevantMemories,
+      replyLength: replySettings.length
+    }
+  );
+}
+
+function withThinking(message, content, context = {}, options = {}) {
+  if (!thinkingSettings.enabled || !shouldShowThinkingForReply(options)) {
+    return message;
+  }
+
+  const trace = buildThinkingTrace(content, messages, context);
+  return {
+    ...message,
+    thinking: formatThinkingTrace(trace)
+  };
 }
 
 async function searchAndReply(query, options = {}) {
@@ -308,23 +340,37 @@ async function searchAndReply(query, options = {}) {
 
   try {
     const searchResult = await searchInternet(query);
-    return createAssistantMessage(formatSearchReply(searchResult, {
-      automatic: Boolean(options.automatic),
-      replyLength: replySettings.length
-    }), {
-      sources: createSources(searchResult)
-    });
+    return withThinking(
+      createAssistantMessage(formatSearchReply(searchResult, {
+        automatic: Boolean(options.automatic),
+        replyLength: replySettings.length
+      }), {
+        sources: createSources(searchResult)
+      }),
+      options.userMessage ?? query,
+      {
+        willSearch: true,
+        replyLength: replySettings.length
+      }
+    );
   } catch {
     const webSearchUrl = createWebSearchUrl(query);
-    return createAssistantMessage(
-      `I tried to search the internet for "${query}", but I could not reach the search service from this browser. You can open a web search here: ${webSearchUrl}`,
+    return withThinking(
+      createAssistantMessage(
+        `I tried to search the internet for "${query}", but I could not reach the search service from this browser. You can open a web search here: ${webSearchUrl}`,
+        {
+          sources: [
+            {
+              title: `Search the web for ${query}`,
+              url: webSearchUrl
+            }
+          ]
+        }
+      ),
+      options.userMessage ?? query,
       {
-        sources: [
-          {
-            title: `Search the web for ${query}`,
-            url: webSearchUrl
-          }
-        ]
+        willSearch: true,
+        replyLength: replySettings.length
       }
     );
   }
@@ -404,7 +450,13 @@ function renderMessages() {
       const body = document.createElement("p");
       body.textContent = message.content;
 
-      item.append(label, body);
+      item.append(label);
+
+      if (message.thinking) {
+        item.append(createThinkingBlock(message.thinking));
+      }
+
+      item.append(body);
 
       if (message.sources?.length) {
         item.append(createSourceList(message.sources));
@@ -415,6 +467,22 @@ function renderMessages() {
   );
 
   elements.messages.scrollTop = elements.messages.scrollHeight;
+}
+
+function createThinkingBlock(thinking) {
+  const details = document.createElement("details");
+  details.className = "thinking-block";
+  details.open = thinkingSettings.enabled;
+
+  const summary = document.createElement("summary");
+  summary.textContent = "Self thinking";
+
+  const body = document.createElement("pre");
+  body.className = "thinking-block__content";
+  body.textContent = thinking;
+
+  details.append(summary, body);
+  return details;
 }
 
 function createSourceList(sources) {
@@ -550,6 +618,29 @@ function setupReplySettings() {
   });
 }
 
+function setupThinkingSettings() {
+  syncThinkingControls();
+
+  elements.selfThinkingEnabled.addEventListener("change", () => {
+    thinkingSettings = saveThinkingSettings({
+      enabled: elements.selfThinkingEnabled.checked
+    });
+    syncThinkingControls();
+    setStatus(
+      thinkingSettings.enabled
+        ? "Self thinking is on. Lil-G will show its reasoning before answers."
+        : "Self thinking is off."
+    );
+  });
+}
+
+function syncThinkingControls() {
+  elements.selfThinkingEnabled.checked = thinkingSettings.enabled;
+  elements.selfThinkingState.textContent = thinkingSettings.enabled
+    ? "Self thinking is on. Lil-G will reason through harder answers before replying."
+    : "Self thinking is off.";
+}
+
 function setupProfileSync() {
   elements.profileName.value = profile.displayName;
 
@@ -568,7 +659,8 @@ function setupProfileSync() {
       voiceSettings,
       replySettings,
       avatarSettings,
-      screenControlSettings
+      screenControlSettings,
+      thinkingSettings
     });
     setStatus("Profile sync code created. Paste it on another device to connect this profile.");
   });
@@ -581,7 +673,8 @@ function setupProfileSync() {
         voiceSettings,
         replySettings,
         avatarSettings,
-        screenControlSettings
+        screenControlSettings,
+        thinkingSettings
       });
     }
 
@@ -602,12 +695,14 @@ function setupProfileSync() {
       replySettings = saveReplySettings(payload.replySettings);
       avatarSettings = saveAvatarSettings(payload.avatarSettings);
       screenControlSettings = saveScreenControlSettings(payload.screenControlSettings);
+      thinkingSettings = saveThinkingSettings(payload.thinkingSettings);
       elements.profileName.value = profile.displayName;
       elements.importProfileCode.value = "";
       renderMemories();
       renderAvatar();
       syncVoiceControls();
       syncReplyControls();
+      syncThinkingControls();
       syncScreenControlSettings();
       setStatus("Profile imported on this device.");
     } catch (error) {

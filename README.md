@@ -8,6 +8,7 @@ Lil-G is a lightweight browser chat assistant that can respond in text and talk 
 - Startup intro with a flashing "Made by GFerryGoon" credit and white orb assistant greeting.
 - Avatar customization for identity label, color, shape, hair, face, body style, and clothes.
 - Built-in response engine so Lil-G can answer immediately without an API key.
+- Optional self thinking: turn it on in Settings and Lil-G shows its reasoning steps before the final answer.
 - Internet search commands for phrases like "search the internet for..." or "look up...".
 - Device-local memory: say "remember that..." or share profile facts like your name, favorite things, interests, or speech style, and Lil-G can recall them later on the same device.
 - Profile sync codes for moving a local profile, memories, and voice settings between installed copies without a backend account service.
@@ -40,6 +41,19 @@ Lil-G is structured as a Progressive Web App (PWA). To install it, host the app 
 - **Tablet:** use the same install flow as that tablet's browser.
 
 The local development server is useful for testing on your computer. Installation on real devices usually requires the app to be available from a real HTTPS URL.
+
+## Self thinking
+
+In **Settings → AI behavior**, turn on **Self thinking** when you want Lil-G to reason through a message before answering.
+
+When it is on, Lil-G adds a collapsible **Self thinking** block above its reply. That block shows steps like:
+
+1. What you are asking for
+2. What saved memories or recent chat context matter
+3. Which approach fits best
+4. How it plans to shape the final answer
+
+Talk-back still reads only the final answer, not the thinking block. Self thinking works with normal chat replies and internet search answers. It stays off for direct commands like memory saves, avatar changes, and screen control.
 
 ## Memory and internet search
 
