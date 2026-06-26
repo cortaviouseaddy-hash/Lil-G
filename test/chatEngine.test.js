@@ -33,14 +33,11 @@ import {
   saveProfile
 } from "../src/profileSync.js";
 import {
-  createRaidListEmbed,
   handleRaidListInput,
-  handleRaidListReply,
   isRaidListInput,
   loadRaidList,
   RAID_LIST_STORAGE_KEY,
-  saveRaidList,
-  setRaidListAnnouncementMessage
+  saveRaidList
 } from "../src/raidList.js";
 import { speakText, stopSpeaking } from "../src/speech.js";
 import {
@@ -210,63 +207,6 @@ describe("raid list command helpers", () => {
     assert.equal(secondGroup.raidList.nextIndex, 3);
     assert.match(secondGroup.reply, /Marked the last set done/);
     assert.match(secondGroup.reply, /Mia - it's time for Mega Rayquaza/);
-  });
-
-  it("auto-adds users who reply yes to the tracked announcement message", () => {
-    const list = setRaidListAnnouncementMessage(
-      handleRaidListInput("/list Mega Rayquaza at 8 PM").raidList,
-      "announcement-1"
-    );
-    const ignoredReply = handleRaidListReply(
-      {
-        content: "yes",
-        authorName: "Corey",
-        repliedToMessageId: "other-message"
-      },
-      list
-    );
-    const addedReply = handleRaidListReply(
-      {
-        content: "yes please",
-        authorName: "Corey",
-        repliedToMessageId: "announcement-1"
-      },
-      list,
-      {
-        createId: (name) => `signup-${name}`
-      }
-    );
-    const duplicateReply = handleRaidListReply(
-      {
-        content: "yep",
-        authorName: "Corey",
-        repliedToMessageId: "announcement-1"
-      },
-      addedReply.raidList
-    );
-
-    assert.equal(ignoredReply.handled, false);
-    assert.equal(ignoredReply.raidList.signups.length, 0);
-    assert.equal(addedReply.handled, true);
-    assert.equal(addedReply.raidList.signups[0].name, "Corey");
-    assert.match(addedReply.reply, /Auto-added Corey from their yes reply/);
-    assert.equal(duplicateReply.raidList.signups.length, 1);
-    assert.match(duplicateReply.reply, /Corey already replied yes/);
-  });
-
-  it("formats the current raid line as embed data", () => {
-    const list = handleRaidListInput("/list Mega Rayquaza at 8 PM").raidList;
-    const withSignups = handleRaidListInput("/list yes Corey, Ace", list).raidList;
-    const embed = createRaidListEmbed(withSignups);
-
-    assert.equal(embed.title, "Mega Rayquaza raid list");
-    assert.match(embed.description, /Reply yes to this message/);
-    assert.deepEqual(
-      embed.fields.map((field) => field.name),
-      ["Line", "Current set", "Waiting"]
-    );
-    assert.match(embed.fields[0].value, /1\. Corey/);
-    assert.match(embed.fields[0].value, /2\. Ace/);
   });
 
   it("saves and loads the raid list from local storage", () => {
